@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useMode } from '@/contexts/ModeContext';
 import { cn } from '@/lib/utils';
+import GoogleAuth from '@/components/GoogleAuth';
 
 const academicSubjects = [
   { id: 'physics', label: 'Physics', icon: '⚡' },
@@ -45,8 +46,8 @@ const sideHustleInterests = [
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { setUserProfile } = useMode();
-  const [step, setStep] = useState(1);
+  const { setUserProfile, isAuthenticated, user } = useMode();
+  const [step, setStep] = useState(0); // Start at 0 for Google Auth
   const [formData, setFormData] = useState({
     name: '',
     college: '',
@@ -55,10 +56,17 @@ export default function OnboardingPage() {
     sideHustleInterests: [] as string[],
   });
 
-  const totalSteps = 3;
+  const totalSteps = 4; // 0: Google Auth, 1-3: Form steps
+
+  // Pre-fill name from Google account
+  useEffect(() => {
+    if (user?.displayName && !formData.name) {
+      setFormData(prev => ({ ...prev, name: user.displayName || '' }));
+    }
+  }, [user]);
 
   const handleNext = () => {
-    if (step < totalSteps) {
+    if (step < totalSteps - 1) {
       setStep(step + 1);
     } else {
       setUserProfile({
@@ -70,7 +78,7 @@ export default function OnboardingPage() {
   };
 
   const handleBack = () => {
-    if (step > 1) {
+    if (step > 0) {
       setStep(step - 1);
     }
   };
@@ -95,6 +103,8 @@ export default function OnboardingPage() {
 
   const canProceed = () => {
     switch (step) {
+      case 0:
+        return isAuthenticated;
       case 1:
         return formData.name && formData.college && formData.course;
       case 2:
@@ -138,7 +148,7 @@ export default function OnboardingPage() {
                 className="h-full rounded-full"
                 style={{ background: 'linear-gradient(90deg, hsl(var(--mode-gradient-start)), hsl(var(--mode-gradient-end)))' }}
                 initial={{ width: 0 }}
-                animate={{ width: i < step ? '100%' : '0%' }}
+                animate={{ width: i < step ? '100%' : i === step ? '50%' : '0%' }}
                 transition={{ duration: 0.3 }}
               />
             </div>
@@ -148,6 +158,27 @@ export default function OnboardingPage() {
         {/* Form Card */}
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
           <AnimatePresence mode="wait">
+            {step === 0 && (
+              <motion.div
+                key="step0"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="p-8"
+              >
+                <div className="mb-6 text-center">
+                  <h2 className="font-heading text-xl font-bold mb-2">Sign in to Continue</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Authenticate with your Google account to get started
+                  </p>
+                </div>
+
+                <div className="flex justify-center">
+                  <GoogleAuth />
+                </div>
+              </motion.div>
+            )}
+
             {step === 1 && (
               <motion.div
                 key="step1"
@@ -297,21 +328,21 @@ export default function OnboardingPage() {
             <Button
               variant="ghost"
               onClick={handleBack}
-              disabled={step === 1}
+              disabled={step === 0}
               className="gap-2"
             >
               <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
             <div className="text-sm text-muted-foreground">
-              Step {step} of {totalSteps}
+              Step {step + 1} of {totalSteps}
             </div>
             <Button
               onClick={handleNext}
               disabled={!canProceed()}
               className="gap-2"
             >
-              {step === totalSteps ? 'Go to Dashboard' : 'Continue'}
+              {step === totalSteps - 1 ? 'Go to Dashboard' : 'Continue'}
               <ArrowRight className="h-4 w-4" />
             </Button>
           </div>

@@ -1,6 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { User, onAuthStateChanged } from "firebase/auth";
+import { auth } from '@/lib/firebase';
 
 export type LearningMode = 'academic' | 'side-hustle';
 
@@ -21,6 +23,8 @@ interface ModeContextType {
   setUserProfile: (profile: UserProfile) => void;
   isOnboarded: boolean;
   isLoading: boolean;
+  user: User | null;
+  isAuthenticated: boolean;
 }
 
 const defaultProfile: UserProfile = {
@@ -37,27 +41,40 @@ const ModeContext = createContext<ModeContextType | undefined>(undefined);
 export function ModeProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<LearningMode>('academic');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load user profile from localStorage on mount (client-side only)
+  // Listen to Firebase auth state changes
   useEffect(() => {
-    const saved = localStorage.getItem('userProfile');
-    if (saved) {
-      try {
-        setUserProfile(JSON.parse(saved));
-      } catch (e) {
-        console.error('Error parsing user profile:', e);
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
+
+      if (firebaseUser) {
+        // Load user profile from localStorage for authenticated user
+        const saved = localStorage.getItem(`userProfile_${firebaseUser.uid}`);
+        if (saved) {
+          try {
+            setUserProfile(JSON.parse(saved));
+          } catch (e) {
+            console.error('Error parsing user profile:', e);
+          }
+        }
+      } else {
+        setUserProfile(null);
       }
-    }
-    setIsLoading(false);
+
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   // Save user profile to localStorage whenever it changes
   useEffect(() => {
-    if (userProfile) {
-      localStorage.setItem('userProfile', JSON.stringify(userProfile));
+    if (userProfile && user) {
+      localStorage.setItem(`userProfile_${user.uid}`, JSON.stringify(userProfile));
     }
-  }, [userProfile]);
+  }, [userProfile, user]);
 
   // Apply mode class to document
   useEffect(() => {
@@ -74,16 +91,19 @@ export function ModeProvider({ children }: { children: ReactNode }) {
   };
 
   const isOnboarded = userProfile?.onboarded ?? false;
+  const isAuthenticated = user !== null;
 
   return (
-    <ModeContext.Provider value={{ 
-      mode, 
-      setMode, 
-      toggleMode, 
-      userProfile, 
+    <ModeContext.Provider value={{
+      mode,
+      setMode,
+      toggleMode,
+      userProfile,
       setUserProfile,
       isOnboarded,
-      isLoading
+      isLoading,
+      user,
+      isAuthenticated
     }}>
       {children}
     </ModeContext.Provider>

@@ -1,16 +1,47 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import uvicorn
 import os
+from routes.auth import router as auth_router
+from routes.profile import router as profile_router
+from routes.college import router as study_router
 
 # Load environment variables
 load_dotenv()
 
-app = FastAPI()
+app = FastAPI(
+    title="LearnFlow AI Backend",
+    description="Backend API for LearnFlow AI - College Learning Assistant",
+    version="1.0.0"
+)
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://localhost:3001"],  # Frontend URLs
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers
+app.include_router(auth_router)
+app.include_router(profile_router)
+app.include_router(study_router)
 
 @app.get("/")
 def read_root():
-    return {"message": "Hello World"}
+    return {
+        "message": "LearnFlow AI Backend API",
+        "version": "1.0.0",
+        "endpoints": {
+            "auth": "/auth",
+            "profile": "/profile",
+            "study": "/study",
+            "docs": "/docs"
+        }
+    }
 
 @app.get("/health")
 def health_check():

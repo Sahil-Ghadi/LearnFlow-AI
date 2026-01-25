@@ -6,14 +6,18 @@ import { useMode } from '@/contexts/ModeContext';
 import Landing from '@/components/Landing';
 
 export default function Home() {
-  const { isOnboarded, isLoading } = useMode();
+  const { isOnboarded, isLoading, isAuthenticated } = useMode();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && isOnboarded) {
-      router.push('/dashboard');
+    if (!isLoading) {
+      if (isOnboarded) {
+        router.push('/dashboard');
+      } else if (!isAuthenticated) {
+        router.push('/onboarding');
+      }
     }
-  }, [isOnboarded, isLoading, router]);
+  }, [isOnboarded, isLoading, isAuthenticated, router]);
 
   if (isLoading) {
     return (

@@ -2,3 +2,9 @@ fastapi
 uvicorn
 firebase-admin
 python-dotenv
+langchain
+langgraph
+langchain-core
+langchain-community
+langchain-google-genai
+pydantic
