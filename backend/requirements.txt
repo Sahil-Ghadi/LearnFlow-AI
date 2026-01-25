@@ -8,3 +8,4 @@ langchain-core
 langchain-community
 langchain-google-genai
 pydantic
+python-multipart

@@ -18,7 +18,9 @@ if not firebase_admin._apps:
             cred = credentials.ApplicationDefault()
         
         print("Initializing Firebase Admin App...")
-        firebase_admin.initialize_app(cred)
+        firebase_admin.initialize_app(cred, {
+            'storageBucket': 'cognexx.appspot.com'
+        })
         print("Firebase Admin successfully initialized.")
     except Exception as e:
         print(f"Error initializing Firebase Admin: {e}")

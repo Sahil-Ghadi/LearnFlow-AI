@@ -6,6 +6,7 @@ import os
 from routes.auth import router as auth_router
 from routes.profile import router as profile_router
 from routes.college import router as study_router
+from routes.suggestions import router as suggestions_router
 
 # Load environment variables
 load_dotenv()
@@ -29,6 +30,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(profile_router)
 app.include_router(study_router)
+app.include_router(suggestions_router)
 
 @app.get("/")
 def read_root():
@@ -39,6 +41,7 @@ def read_root():
             "auth": "/auth",
             "profile": "/profile",
             "study": "/study",
+            "suggestions": "/suggestions",
             "docs": "/docs"
         }
     }

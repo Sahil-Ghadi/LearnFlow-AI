@@ -1,228 +1,357 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bot,
   ArrowRight,
   ArrowLeft,
+  User,
   GraduationCap,
   Rocket,
-  User,
-  Code,
-  Palette,
-  Brain,
-  TrendingUp,
-  Smartphone,
-  Check
+  Check,
+  Plus,
+  X,
+  Sparkles,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useMode } from '@/contexts/ModeContext';
+import { auth } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
-import GoogleAuth from '@/components/GoogleAuth';
+import { toast } from 'sonner';
+import { useMode } from '@/contexts/ModeContext';
 
-const academicSubjects = [
-  { id: 'physics', label: 'Physics', icon: '⚡' },
-  { id: 'chemistry', label: 'Chemistry', icon: '🧪' },
-  { id: 'mathematics', label: 'Mathematics', icon: '📐' },
-  { id: 'biology', label: 'Biology', icon: '🧬' },
-  { id: 'computer-science', label: 'Computer Science', icon: '💻' },
-  { id: 'english', label: 'English', icon: '📚' },
-  { id: 'economics', label: 'Economics', icon: '📊' },
-  { id: 'history', label: 'History', icon: '🏛️' },
-];
+/**
+ * A component that scrolls text horizontally if it overflows its container.
+ */
+function MarqueeText({ text, className }: { text: string; className?: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLDivElement>(null);
+  const [shouldAnimate, setShouldAnimate] = useState(false);
 
-const sideHustleInterests = [
-  { id: 'web-dev', label: 'Web Development', icon: Code },
-  { id: 'mobile-dev', label: 'Mobile Development', icon: Smartphone },
-  { id: 'ai-ml', label: 'AI & Machine Learning', icon: Brain },
-  { id: 'ui-ux', label: 'UI/UX Design', icon: Palette },
-  { id: 'data-science', label: 'Data Science', icon: TrendingUp },
-  { id: 'freelancing', label: 'Freelancing', icon: Rocket },
-];
+  useEffect(() => {
+    if (containerRef.current && textRef.current) {
+      const containerWidth = containerRef.current.offsetWidth;
+      const textWidth = textRef.current.offsetWidth;
+      setShouldAnimate(textWidth > containerWidth);
+    }
+  }, [text]);
+
+  if (!shouldAnimate) {
+    return <span className={className}>{text}</span>;
+  }
+
+  return (
+    <div ref={containerRef} className={cn("overflow-hidden whitespace-nowrap relative", className)}>
+      <motion.div
+        ref={textRef}
+        className="inline-flex"
+        animate={{
+          x: ["-0%", "-50%"],
+        }}
+        transition={{
+          x: {
+            repeat: Infinity,
+            repeatType: "loop",
+            duration: Math.max(text.length * 0.15, 5),
+            ease: "linear",
+          },
+        }}
+      >
+        <span className="pr-8">{text}</span>
+        <span className="pr-8">{text}</span>
+      </motion.div>
+    </div>
+  );
+}
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { setUserProfile, isAuthenticated, user } = useMode();
-  const [step, setStep] = useState(0); // Start at 0 for Google Auth
+  const { setUserProfile } = useMode();
+  const [step, setStep] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
     college: '',
-    course: '',
+    degree: '',
     academicSubjects: [] as string[],
     sideHustleInterests: [] as string[],
   });
 
-  const totalSteps = 4; // 0: Google Auth, 1-3: Form steps
+  const [aiSuggestions, setAiSuggestions] = useState({
+    subjects: [] as string[],
+    interests: [] as string[],
+  });
 
-  // Pre-fill name from Google account
+  const [customSubject, setCustomSubject] = useState('');
+  const [customInterest, setCustomInterest] = useState('');
+
+  const totalSteps = 3;
+
   useEffect(() => {
-    if (user?.displayName && !formData.name) {
-      setFormData(prev => ({ ...prev, name: user.displayName || '' }));
+    if (step === 2 && formData.degree && aiSuggestions.subjects.length === 0) {
+      fetchAISuggestions();
     }
-  }, [user]);
+  }, [step, formData.degree]);
+
+  const fetchAISuggestions = async () => {
+    setIsFetchingSuggestions(true);
+    try {
+      const response = await fetch('http://localhost:8000/suggestions/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          degree: formData.degree,
+          major: formData.degree,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch suggestions');
+
+      const data = await response.json();
+      setAiSuggestions({
+        subjects: data.subjects || [],
+        interests: data.side_hustle_interests || [],
+      });
+
+      toast.success('AI suggestions generated!');
+    } catch (error) {
+      console.error('Error fetching suggestions:', error);
+      toast.error('Failed to generate suggestions');
+    } finally {
+      setIsFetchingSuggestions(false);
+    }
+  };
 
   const handleNext = () => {
-    if (step < totalSteps - 1) {
+    if (step < totalSteps) {
       setStep(step + 1);
     } else {
-      setUserProfile({
-        ...formData,
-        onboarded: true,
-      });
-      router.push('/dashboard');
+      handleSubmit();
     }
   };
 
   const handleBack = () => {
-    if (step > 0) {
+    if (step > 1) {
       setStep(step - 1);
     }
   };
 
-  const toggleAcademicSubject = (id: string) => {
+  const handleSubmit = async () => {
+    setIsLoading(true);
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        toast.error("Please sign in first");
+        router.push('/login');
+        return;
+      }
+
+      const response = await fetch('http://localhost:8000/profile/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          uid: user.uid,
+          name: formData.name,
+          college: formData.college,
+          course: formData.degree,
+          academic_subjects: formData.academicSubjects,
+          side_hustle_interests: formData.sideHustleInterests,
+          onboarded: true,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to create profile');
+
+      // Update the ModeContext with the new profile BEFORE redirecting
+      setUserProfile({
+        name: formData.name,
+        college: formData.college,
+        course: formData.degree,
+        academicSubjects: formData.academicSubjects,
+        sideHustleInterests: formData.sideHustleInterests,
+        onboarded: true,
+      });
+
+      toast.success('🚀 Profile created! Redirecting to dashboard...');
+
+      // Small delay to show the success toast, then redirect
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Use Next.js router with refresh to ensure clean navigation
+      router.push('/dashboard');
+      router.refresh();
+    } catch (error: any) {
+      console.error('Error creating profile:', error);
+      toast.error(error.message || 'Failed to create profile');
+      setIsLoading(false);
+    }
+  };
+
+  const toggleSubject = (subject: string) => {
     setFormData(prev => ({
       ...prev,
-      academicSubjects: prev.academicSubjects.includes(id)
-        ? prev.academicSubjects.filter(s => s !== id)
-        : [...prev.academicSubjects, id]
+      academicSubjects: prev.academicSubjects.includes(subject)
+        ? prev.academicSubjects.filter(s => s !== subject)
+        : [...prev.academicSubjects, subject]
     }));
   };
 
-  const toggleSideHustleInterest = (id: string) => {
+  const toggleInterest = (interest: string) => {
     setFormData(prev => ({
       ...prev,
-      sideHustleInterests: prev.sideHustleInterests.includes(id)
-        ? prev.sideHustleInterests.filter(s => s !== id)
-        : [...prev.sideHustleInterests, id]
+      sideHustleInterests: prev.sideHustleInterests.includes(interest)
+        ? prev.sideHustleInterests.filter(i => i !== interest)
+        : [...prev.sideHustleInterests, interest]
     }));
+  };
+
+  const addCustomSubject = () => {
+    if (customSubject.trim()) {
+      setFormData(prev => ({
+        ...prev,
+        academicSubjects: [...prev.academicSubjects, customSubject.trim()]
+      }));
+      setCustomSubject('');
+    }
+  };
+
+  const addCustomInterest = () => {
+    if (customInterest.trim()) {
+      setFormData(prev => ({
+        ...prev,
+        sideHustleInterests: [...prev.sideHustleInterests, customInterest.trim()]
+      }));
+      setCustomInterest('');
+    }
   };
 
   const canProceed = () => {
     switch (step) {
-      case 0:
-        return isAuthenticated;
-      case 1:
-        return formData.name && formData.college && formData.course;
-      case 2:
-        return formData.academicSubjects.length > 0;
-      case 3:
-        return formData.sideHustleInterests.length > 0;
-      default:
-        return true;
+      case 1: return formData.name.trim() && formData.college.trim() && formData.degree.trim();
+      case 2: return formData.academicSubjects.length > 0;
+      case 3: return formData.sideHustleInterests.length > 0;
+      default: return true;
     }
   };
 
+  const stepVariants = {
+    initial: { opacity: 0, scale: 0.98, y: 10 },
+    animate: { opacity: 1, scale: 1, y: 0 },
+    exit: { opacity: 0, scale: 0.98, y: -10 }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-6">
-      {/* Background decoration */}
-      <div className="fixed inset-0 -z-10">
-        <div className="absolute left-1/4 top-1/4 h-96 w-96 rounded-full bg-primary/5 blur-3xl" />
-        <div className="absolute right-1/4 bottom-1/4 h-96 w-96 rounded-full bg-accent/5 blur-3xl" />
+    <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] text-zinc-100 p-6 overflow-hidden selection:bg-primary/30">
+      {/* Premium Background Elements */}
+      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/10 rounded-full blur-[120px] opacity-50" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-accent/10 rounded-full blur-[120px] opacity-50" />
+        <div className="absolute inset-0 bg-[#0a0a0a]/60 backdrop-blur-[2px]" />
       </div>
 
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-2xl"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-[0.8fr_1.2fr] bg-[#111111]/90 backdrop-blur-2xl border border-white/5 rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.7)] overflow-hidden"
       >
-        {/* Header */}
-        <div className="mb-8 text-center">
-          <div className="mb-6 inline-flex items-center justify-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary">
-              <Bot className="h-8 w-8 text-primary-foreground" />
+        {/* Left Panel: Progress & Branding */}
+        <div className="relative p-10 lg:p-14 flex flex-col justify-between bg-zinc-900/50 border-r border-white/5">
+          <div>
+            <div className="flex items-center gap-4 mb-12">
+              <div className="p-3 rounded-2xl bg-primary shadow-[0_0_25px_rgba(var(--primary-rgb),0.3)]">
+                <Bot className="h-7 w-7 text-white" />
+              </div>
+              <span className="font-heading text-xl font-bold tracking-tight text-white">LearnFlow AI</span>
+            </div>
+
+            <div className="space-y-10">
+              <div className="relative">
+                <div className="absolute left-[15px] top-[40px] bottom-[40px] w-px bg-white/5" />
+
+                {[
+                  { id: 1, title: 'Identity', icon: User, desc: 'Your profile baseline' },
+                  { id: 2, title: 'Academics', icon: GraduationCap, desc: 'Current coursework' },
+                  { id: 3, title: 'Growth', icon: Rocket, desc: 'Future skill-building' }
+                ].map((s) => (
+                  <div key={s.id} className="relative flex items-center gap-6 mb-12 last:mb-0">
+                    <div className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all duration-700 z-10",
+                      step >= s.id
+                        ? "border-primary bg-primary text-white shadow-[0_0_20px_rgba(var(--primary-rgb),0.5)]"
+                        : "border-white/10 bg-[#111111] text-zinc-600"
+                    )}>
+                      {step > s.id ? <Check className="h-4 w-4 stroke-[3px]" /> : <span className="text-xs font-black">{s.id}</span>}
+                    </div>
+                    <div>
+                      <h3 className={cn("text-sm font-bold tracking-wider transition-colors duration-500", step >= s.id ? "text-white uppercase" : "text-zinc-600 uppercase")}>
+                        {s.title}
+                      </h3>
+                      <p className="text-[11px] text-zinc-500 hidden lg:block font-medium mt-0.5">{s.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-          <h1 className="mb-2 font-heading text-3xl font-bold">Welcome to LearnAI</h1>
-          <p className="text-muted-foreground">Let&apos;s personalize your learning experience</p>
-        </div>
 
-        {/* Progress bar */}
-        <div className="mb-8 flex items-center gap-2">
-          {Array.from({ length: totalSteps }).map((_, i) => (
-            <div key={i} className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-              <motion.div
-                className="h-full rounded-full"
-                style={{ background: 'linear-gradient(90deg, hsl(var(--mode-gradient-start)), hsl(var(--mode-gradient-end)))' }}
-                initial={{ width: 0 }}
-                animate={{ width: i < step ? '100%' : i === step ? '50%' : '0%' }}
-                transition={{ duration: 0.3 }}
-              />
+          <div className="mt-12 p-6 rounded-[1.5rem] bg-white/[0.02] border border-white/5 backdrop-blur-md relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="flex items-center gap-3 mb-3">
+              <Sparkles className="h-4 w-4 text-accent animate-pulse" />
+              <span className="text-[10px] font-black text-accent uppercase tracking-[0.2em]">Neural Engine</span>
             </div>
-          ))}
+            <p className="text-[11px] leading-relaxed text-zinc-400 font-medium italic">
+              "Input gathered. Optimizing learning algorithms based on your university profile..."
+            </p>
+          </div>
         </div>
 
-        {/* Form Card */}
-        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+        {/* Right Panel: Active Step Content */}
+        <div className="p-8 lg:p-14 flex flex-col min-h-[500px]">
           <AnimatePresence mode="wait">
-            {step === 0 && (
-              <motion.div
-                key="step0"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="p-8"
-              >
-                <div className="mb-6 text-center">
-                  <h2 className="font-heading text-xl font-bold mb-2">Sign in to Continue</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Authenticate with your Google account to get started
-                  </p>
-                </div>
-
-                <div className="flex justify-center">
-                  <GoogleAuth />
-                </div>
-              </motion.div>
-            )}
-
             {step === 1 && (
-              <motion.div
-                key="step1"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="p-8"
-              >
-                <div className="mb-6 flex items-center gap-3">
-                  <div className="icon-container">
-                    <User className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <h2 className="font-heading text-xl font-bold">Personal Information</h2>
-                    <p className="text-sm text-muted-foreground">Tell us about yourself</p>
-                  </div>
+              <motion.div key="step1" {...stepVariants} className="flex-1">
+                <div className="mb-10">
+                  <h2 className="text-4xl font-bold font-heading mb-3 text-white tracking-tight">Identity</h2>
+                  <p className="text-zinc-500 text-sm font-medium">Initialize your academic profile credentials.</p>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Your Name</Label>
+                <div className="space-y-8">
+                  <div className="space-y-2.5">
+                    <Label className="text-zinc-500 text-[10px] font-black uppercase tracking-[0.15em] ml-1">Full Name</Label>
                     <Input
-                      id="name"
-                      placeholder="Enter your full name"
+                      placeholder="e.g. Alex Johnson"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="h-14 bg-white/[0.03] border-white/10 rounded-2xl focus:ring-primary focus:border-primary text-white placeholder:text-zinc-700 text-base px-6 font-medium transition-all"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="college">College / University</Label>
+                  <div className="space-y-2.5">
+                    <Label className="text-zinc-500 text-[10px] font-black uppercase tracking-[0.15em] ml-1">Institution</Label>
                     <Input
-                      id="college"
-                      placeholder="Enter your institution name"
+                      placeholder="e.g. Stanford University"
                       value={formData.college}
                       onChange={(e) => setFormData({ ...formData, college: e.target.value })}
+                      className="h-14 bg-white/[0.03] border-white/10 rounded-2xl focus:ring-primary focus:border-primary text-white placeholder:text-zinc-700 text-base px-6 font-medium transition-all"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="course">Course / Major</Label>
+                  <div className="space-y-2.5">
+                    <Label className="text-zinc-500 text-[10px] font-black uppercase tracking-[0.15em] ml-1">Major / Degree</Label>
                     <Input
-                      id="course"
-                      placeholder="e.g., Computer Science, Engineering"
-                      value={formData.course}
-                      onChange={(e) => setFormData({ ...formData, course: e.target.value })}
+                      placeholder="e.g. Computer Science"
+                      value={formData.degree}
+                      onChange={(e) => setFormData({ ...formData, degree: e.target.value })}
+                      className="h-14 bg-white/[0.03] border-white/10 rounded-2xl focus:ring-primary focus:border-primary text-white placeholder:text-zinc-700 text-base px-6 font-medium transition-all"
                     />
                   </div>
                 </div>
@@ -230,120 +359,175 @@ export default function OnboardingPage() {
             )}
 
             {step === 2 && (
-              <motion.div
-                key="step2"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="p-8"
-              >
-                <div className="mb-6 flex items-center gap-3">
-                  <div className="icon-container">
-                    <GraduationCap className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <h2 className="font-heading text-xl font-bold">Academic Subjects</h2>
-                    <p className="text-sm text-muted-foreground">Select subjects you&apos;re studying</p>
-                  </div>
+              <motion.div key="step2" {...stepVariants} className="flex-1">
+                <div className="mb-8">
+                  <h2 className="text-4xl font-bold font-heading mb-3 text-white tracking-tight">Academics</h2>
+                  <p className="text-zinc-500 text-sm font-medium">Select your current focus areas.</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                  {academicSubjects.map((subject) => {
-                    const isSelected = formData.academicSubjects.includes(subject.id);
-                    return (
-                      <button
-                        key={subject.id}
-                        onClick={() => toggleAcademicSubject(subject.id)}
-                        className={cn(
-                          'flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all',
-                          isSelected
-                            ? 'border-primary bg-primary/10'
-                            : 'border-border hover:border-primary/50'
-                        )}
-                      >
-                        <span className="text-2xl">{subject.icon}</span>
-                        <span className="text-sm font-medium">{subject.label}</span>
-                        {isSelected && (
-                          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary">
-                            <Check className="h-3 w-3 text-primary-foreground" />
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+                {isFetchingSuggestions ? (
+                  <div className="flex flex-col items-center justify-center py-24 gap-6">
+                    <div className="relative">
+                      <div className="h-20 w-20 rounded-full border-t-2 border-primary animate-spin" />
+                      <Sparkles className="absolute inset-0 m-auto h-7 w-7 text-primary animate-pulse" />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-white font-bold tracking-wide">Syncing with AI...</p>
+                      <p className="text-zinc-500 text-[11px] uppercase tracking-widest mt-1">Generating coursework suggestions</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-8">
+                    <div className="grid grid-cols-2 gap-4">
+                      {aiSuggestions.subjects.map((sub) => {
+                        const isSelected = formData.academicSubjects.includes(sub);
+                        return (
+                          <button
+                            key={sub}
+                            onClick={() => toggleSubject(sub)}
+                            className={cn(
+                              "group relative flex items-center justify-between p-4 rounded-2xl border transition-all duration-400 overflow-hidden",
+                              isSelected
+                                ? "bg-primary/10 border-primary shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)]"
+                                : "bg-white/[0.02] border-white/5 hover:border-white/20"
+                            )}
+                          >
+                            <MarqueeText
+                              text={sub}
+                              className={cn(
+                                "text-xs font-bold tracking-wide pr-4 w-full text-left transition-colors",
+                                isSelected ? "text-white" : "text-zinc-400 group-hover:text-zinc-200"
+                              )}
+                            />
+                            {isSelected && (
+                              <div className="shrink-0 bg-primary rounded-full p-1 ml-2">
+                                <Check className="h-3 w-3 text-white stroke-[3px]" />
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="relative pt-6 border-t border-white/5">
+                      <div className="flex gap-3">
+                        <Input
+                          placeholder="Add custom subject..."
+                          value={customSubject}
+                          onChange={(e) => setCustomSubject(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && addCustomSubject()}
+                          className="h-12 bg-white/[0.02] border-white/5 rounded-xl focus:border-primary text-xs font-medium"
+                        />
+                        <Button
+                          onClick={addCustomSubject}
+                          className="h-12 w-12 rounded-xl bg-primary hover:scale-105 transition-transform"
+                        >
+                          <Plus className="h-5 w-5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </motion.div>
             )}
 
             {step === 3 && (
-              <motion.div
-                key="step3"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="p-8"
-              >
-                <div className="mb-6 flex items-center gap-3">
-                  <div className="icon-container">
-                    <Rocket className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <h2 className="font-heading text-xl font-bold">Side Hustle Interests</h2>
-                    <p className="text-sm text-muted-foreground">What skills do you want to build?</p>
-                  </div>
+              <motion.div key="step3" {...stepVariants} className="flex-1">
+                <div className="mb-8">
+                  <h2 className="text-4xl font-bold font-heading mb-3 text-white tracking-tight">Growth</h2>
+                  <p className="text-zinc-500 text-sm font-medium">Select your external skill goals.</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                  {sideHustleInterests.map((interest) => {
-                    const Icon = interest.icon;
-                    const isSelected = formData.sideHustleInterests.includes(interest.id);
-                    return (
-                      <button
-                        key={interest.id}
-                        onClick={() => toggleSideHustleInterest(interest.id)}
-                        className={cn(
-                          'flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all',
-                          isSelected
-                            ? 'border-primary bg-primary/10'
-                            : 'border-border hover:border-primary/50'
-                        )}
+                <div className="space-y-8">
+                  <div className="grid grid-cols-2 gap-4">
+                    {aiSuggestions.interests.map((int) => {
+                      const isSelected = formData.sideHustleInterests.includes(int);
+                      return (
+                        <button
+                          key={int}
+                          onClick={() => toggleInterest(int)}
+                          className={cn(
+                            "group relative flex items-center justify-between p-4 rounded-2xl border transition-all duration-400 overflow-hidden",
+                            isSelected
+                              ? "bg-accent/10 border-accent shadow-[0_0_20px_rgba(var(--accent-rgb),0.2)]"
+                              : "bg-white/[0.02] border-white/5 hover:border-white/20"
+                          )}
+                        >
+                          <MarqueeText
+                            text={int}
+                            className={cn(
+                              "text-xs font-bold tracking-wide pr-4 w-full text-left transition-colors",
+                              isSelected ? "text-accent" : "text-zinc-400 group-hover:text-zinc-200"
+                            )}
+                          />
+                          {isSelected && (
+                            <div className="shrink-0 bg-accent rounded-full p-1 ml-2">
+                              <Check className="h-3 w-3 text-black stroke-[3px]" />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="relative pt-6 border-t border-white/5">
+                    <div className="flex gap-3">
+                      <Input
+                        placeholder="Add secondary skill..."
+                        value={customInterest}
+                        onChange={(e) => setCustomInterest(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && addCustomInterest()}
+                        className="h-12 bg-white/[0.02] border-white/5 rounded-xl focus:border-accent text-xs font-medium"
+                      />
+                      <Button
+                        onClick={addCustomInterest}
+                        className="h-12 w-12 rounded-xl bg-accent hover:scale-105 transition-transform text-black"
                       >
-                        <Icon className={cn('h-6 w-6', isSelected ? 'text-primary' : 'text-muted-foreground')} />
-                        <span className="text-sm font-medium text-center">{interest.label}</span>
-                        {isSelected && (
-                          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary">
-                            <Check className="h-3 w-3 text-primary-foreground" />
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
+                        <Plus className="h-5 w-5" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Navigation */}
-          <div className="flex items-center justify-between border-t border-border bg-muted/30 px-8 py-4">
+          {/* Nav Footer */}
+          <div className="mt-auto pt-10 flex items-center justify-between">
             <Button
               variant="ghost"
               onClick={handleBack}
-              disabled={step === 0}
-              className="gap-2"
+              disabled={step === 1 || isLoading}
+              className="px-8 h-12 rounded-xl hover:bg-white/[0.03] text-zinc-500 hover:text-white transition-all disabled:opacity-0"
             >
-              <ArrowLeft className="h-4 w-4" />
-              Back
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Previous
             </Button>
-            <div className="text-sm text-muted-foreground">
-              Step {step + 1} of {totalSteps}
-            </div>
+
             <Button
               onClick={handleNext}
-              disabled={!canProceed()}
-              className="gap-2"
+              disabled={!canProceed() || isLoading}
+              className={cn(
+                "h-14 px-12 rounded-[1.25rem] font-black uppercase tracking-widest transition-all duration-500 active:scale-95 shadow-2xl",
+                step === totalSteps
+                  ? "bg-accent hover:bg-accent/90 text-black shadow-accent/20"
+                  : "bg-primary hover:bg-primary/90 text-white shadow-primary/20",
+                !canProceed() && "opacity-50 grayscale cursor-not-allowed"
+              )}
             >
-              {step === totalSteps - 1 ? 'Go to Dashboard' : 'Continue'}
-              <ArrowRight className="h-4 w-4" />
+              {isLoading ? (
+                <div className="flex items-center gap-3">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Finalizing
+                </div>
+              ) : step === totalSteps ? (
+                "Ignite Engine"
+              ) : (
+                <div className="flex items-center gap-2">
+                  Next Step
+                  <ArrowRight className="h-4 w-4" />
+                </div>
+              )}
             </Button>
           </div>
         </div>
