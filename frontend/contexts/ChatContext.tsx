@@ -1,6 +1,8 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { User, onAuthStateChanged } from "firebase/auth";
+import { auth } from '@/lib/firebase';
 
 interface StudyReminder {
     id: string;
@@ -30,57 +32,73 @@ interface ChatContextType {
     chatHistory: { role: 'user' | 'assistant'; content: string }[];
     addToChatHistory: (message: { role: 'user' | 'assistant'; content: string }) => void;
     clearChatHistory: () => void;
+    refreshData: () => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
-// Sample initial data
-const sampleReminders: StudyReminder[] = [
-    {
-        id: '1',
-        subject: 'Physics',
-        topic: 'Electromagnetic Induction',
-        dueTime: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours from now
-        priority: 'high',
-        completed: false,
-    },
-    {
-        id: '2',
-        subject: 'Mathematics',
-        topic: 'Integration Practice',
-        dueTime: new Date(Date.now() + 5 * 60 * 60 * 1000), // 5 hours from now
-        priority: 'medium',
-        completed: false,
-    },
-];
-
-const sampleDeadlines: Deadline[] = [
-    {
-        id: '1',
-        title: 'Physics Assignment',
-        dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days
-        category: 'assignment',
-        subject: 'Physics',
-    },
-    {
-        id: '2',
-        title: 'Mid-term Exams',
-        dueDate: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000), // 8 days
-        category: 'exam',
-    },
-    {
-        id: '3',
-        title: 'Chemistry Lab Report',
-        dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days
-        category: 'assignment',
-        subject: 'Chemistry',
-    },
-];
-
 export function ChatProvider({ children }: { children: ReactNode }) {
-    const [reminders, setReminders] = useState<StudyReminder[]>(sampleReminders);
-    const [deadlines, setDeadlines] = useState<Deadline[]>(sampleDeadlines);
+    const [reminders, setReminders] = useState<StudyReminder[]>([]);
+    const [deadlines, setDeadlines] = useState<Deadline[]>([]);
     const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
+    const [user, setUser] = useState<User | null>(null);
+
+    // Listen to auth changes
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+            setUser(firebaseUser);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    // Fetch reminders and deadlines when user is authenticated
+    useEffect(() => {
+        if (user) {
+            fetchReminders();
+            fetchDeadlines();
+        }
+    }, [user]);
+
+    const fetchReminders = async () => {
+        if (!user) return;
+
+        try {
+            const response = await fetch(`http://localhost:8000/dashboard/reminders/${user.uid}`);
+            if (response.ok) {
+                const data = await response.json();
+                const formattedReminders = data.reminders.map((r: any) => ({
+                    ...r,
+                    dueTime: new Date(r.dueTime)
+                }));
+                setReminders(formattedReminders);
+            }
+        } catch (err) {
+            console.error('Error fetching reminders:', err);
+        }
+    };
+
+    const fetchDeadlines = async () => {
+        if (!user) return;
+
+        try {
+            const response = await fetch(`http://localhost:8000/dashboard/deadlines/${user.uid}`);
+            if (response.ok) {
+                const data = await response.json();
+                const formattedDeadlines = data.deadlines.map((d: any) => ({
+                    ...d,
+                    dueDate: new Date(d.dueDate)
+                }));
+                setDeadlines(formattedDeadlines);
+            }
+        } catch (err) {
+            console.error('Error fetching deadlines:', err);
+        }
+    };
+
+    const refreshData = () => {
+        fetchReminders();
+        fetchDeadlines();
+    };
 
     const addReminder = (reminder: Omit<StudyReminder, 'id' | 'completed'>) => {
         const newReminder: StudyReminder = {
@@ -134,6 +152,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 chatHistory,
                 addToChatHistory,
                 clearChatHistory,
+                refreshData,
             }}
         >
             {children}

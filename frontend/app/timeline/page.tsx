@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
@@ -18,111 +18,28 @@ import { DashboardLayout } from '@/components/DashboardLayout';
 import { GlowCard, AgentBadge } from '@/components/ui/GlowCard';
 import { useMode } from '@/contexts/ModeContext';
 
-const academicTimelineEvents = [
-  {
-    id: 1,
-    type: 'schedule',
-    icon: Calendar,
-    title: 'Daily Study Plan Generated',
-    description: 'Created optimized study schedule based on syllabus progress and weak areas.',
-    time: '8:00 AM',
-    date: 'Today',
-    details: ['Physics: 40 mins', 'Calculus: 30 mins', 'Chemistry: 25 mins']
-  },
-  {
-    id: 2,
-    type: 'detection',
-    icon: AlertTriangle,
-    title: 'Weak Topic Identified',
-    description: 'Detected low confidence in Electromagnetic Induction after practice test analysis.',
-    time: '10:30 AM',
-    date: 'Today',
-    details: ['Accuracy: 45%', 'Added 2 extra revision sessions']
-  },
-  {
-    id: 3,
-    type: 'adjustment',
-    icon: Brain,
-    title: 'Learning Pace Adjusted',
-    description: 'Reduced daily workload by 20% to prevent burnout based on activity patterns.',
-    time: '2:00 PM',
-    date: 'Today',
-    details: ['Previous: 5 hours', 'Adjusted: 4 hours', 'Reason: Fatigue patterns detected']
-  },
-  {
-    id: 4,
-    type: 'priority',
-    icon: Target,
-    title: 'Exam Priority Mode Activated',
-    description: 'Mid-term exams detected. Side-hustle learning paused for 2 weeks.',
-    time: '6:00 PM',
-    date: 'Yesterday',
-    details: ['Exam date: 15 days away', 'Focus subjects: Physics, Mathematics']
-  },
-  {
-    id: 5,
-    type: 'insight',
-    icon: TrendingUp,
-    title: 'Performance Trend Analyzed',
-    description: 'Weekly performance report shows 12% improvement in problem-solving accuracy.',
-    time: '9:00 PM',
-    date: 'Yesterday',
-    details: ['Best subject: Physics (+15%)', 'Needs work: Chemistry (+5%)']
-  },
-];
+interface TimelineEvent {
+  id: number;
+  type: string;
+  icon: string;
+  title: string;
+  description: string;
+  time: string;
+  date: string;
+  details: string[];
+}
 
-const sideHustleTimelineEvents = [
-  {
-    id: 1,
-    type: 'schedule',
-    icon: Clock,
-    title: 'Skill Practice Scheduled',
-    description: 'Auto-scheduled React practice session based on 5-day inactivity alert.',
-    time: '9:00 AM',
-    date: 'Today',
-    details: ['Duration: 45 mins', 'Focus: React Hooks', 'Source: YouTube tutorial']
-  },
-  {
-    id: 2,
-    type: 'project',
-    icon: Code,
-    title: 'Project Assignment',
-    description: 'Assigned "Portfolio Website" project based on current skill level.',
-    time: '11:00 AM',
-    date: 'Today',
-    details: ['Difficulty: Beginner', 'Est. time: 8 hours', 'Skills: HTML, CSS, React']
-  },
-  {
-    id: 3,
-    type: 'detection',
-    icon: Zap,
-    title: 'Skill Gap Detected',
-    description: 'Identified TypeScript as prerequisite for advanced React projects.',
-    time: '3:00 PM',
-    date: 'Today',
-    details: ['Added TypeScript module', 'Priority: High', 'Est. completion: 2 weeks']
-  },
-  {
-    id: 4,
-    type: 'insight',
-    icon: TrendingUp,
-    title: 'Portfolio Readiness Update',
-    description: 'Portfolio completion increased to 65% after project submission.',
-    time: '7:00 PM',
-    date: 'Yesterday',
-    details: ['Projects completed: 4/6', 'Skills showcased: 5', 'Recommendation: Add more AI projects']
-  },
-  {
-    id: 5,
-    type: 'adjustment',
-    icon: Brain,
-    title: 'Learning Path Optimized',
-    description: 'Reordered learning modules for better skill progression.',
-    time: '10:00 PM',
-    date: 'Yesterday',
-    details: ['Moved: Node.js before Express', 'Added: MongoDB basics', 'Reason: Dependency chain']
-  },
-];
+const iconMap: Record<string, any> = {
+  Calendar,
+  Target,
+  Brain,
+  AlertTriangle,
+  TrendingUp,
+  Clock,
+  Zap,
+  Code,
+  Bot
+};
 
 const typeColors = {
   schedule: 'from-blue-500 to-cyan-500',
@@ -134,15 +51,56 @@ const typeColors = {
 };
 
 export default function Timeline() {
-  const { mode, isOnboarded, isLoading } = useMode();
+  const { mode, isOnboarded, isLoading, user } = useMode();
   const router = useRouter();
-  const events = mode === 'academic' ? academicTimelineEvents : sideHustleTimelineEvents;
+  const [events, setEvents] = useState<TimelineEvent[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isLoading && !isOnboarded) {
       router.push('/onboarding');
     }
   }, [isOnboarded, isLoading, router]);
+
+  useEffect(() => {
+    const fetchTimelineEvents = async () => {
+      if (!user) return;
+
+      try {
+        setDataLoading(true);
+        const response = await fetch(`http://localhost:8000/timeline/events/${user.uid}?mode=${mode}`);
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch timeline events');
+        }
+
+        const data = await response.json();
+        setEvents(data.events || []);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching timeline:', err);
+        setError('Failed to load timeline events');
+        // Set default event on error
+        setEvents([{
+          id: 1,
+          type: 'schedule',
+          icon: 'Bot',
+          title: 'AI Agent Initialized',
+          description: 'Your personalized learning assistant is now active.',
+          time: 'Just now',
+          date: 'Today',
+          details: ['Ready to create study plans', 'Tracking your progress']
+        }]);
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
+    if (user && !isLoading && isOnboarded) {
+      fetchTimelineEvents();
+    }
+  }, [user, mode, isLoading, isOnboarded]);
 
   if (isLoading || !isOnboarded) {
     return (
@@ -182,47 +140,66 @@ export default function Timeline() {
           </div>
         </GlowCard>
 
+        {/* Loading State */}
+        {dataLoading && (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-pulse text-muted-foreground">Loading timeline events...</div>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && !dataLoading && (
+          <GlowCard delay={0.1}>
+            <div className="text-center py-8">
+              <AlertTriangle className="h-12 w-12 text-orange-500 mx-auto mb-4" />
+              <p className="text-muted-foreground">{error}</p>
+            </div>
+          </GlowCard>
+        )}
+
         {/* Timeline */}
-        <div className="space-y-0">
-          {events.map((event, index) => {
-            const Icon = event.icon;
-            return (
-              <motion.div
-                key={event.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="timeline-item"
-              >
-                <div className={`timeline-dot bg-gradient-to-br ${typeColors[event.type as keyof typeof typeColors]}`}>
-                  <Icon className="h-3 w-3 text-white" />
-                </div>
-                <div className="rounded-xl border border-border bg-card p-5 shadow-soft">
-                  <div className="mb-2 flex items-start justify-between">
-                    <div>
-                      <h3 className="font-heading font-bold">{event.title}</h3>
-                      <p className="mt-1 text-sm text-muted-foreground">{event.description}</p>
+        {!dataLoading && !error && (
+          <div className="space-y-0">
+            {events.map((event, index) => {
+              const Icon = iconMap[event.icon] || Bot;
+              return (
+                <motion.div
+                  key={event.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="timeline-item"
+                >
+                  <div className={`timeline-dot bg-gradient-to-br ${typeColors[event.type as keyof typeof typeColors] || 'from-gray-500 to-gray-600'}`}>
+                    <Icon className="h-3 w-3 text-white" />
+                  </div>
+                  <div className="rounded-xl border border-border bg-card p-5 shadow-soft">
+                    <div className="mb-2 flex items-start justify-between">
+                      <div>
+                        <h3 className="font-heading font-bold">{event.title}</h3>
+                        <p className="mt-1 text-sm text-muted-foreground">{event.description}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-sm font-medium">{event.time}</span>
+                        <p className="text-xs text-muted-foreground">{event.date}</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <span className="text-sm font-medium">{event.time}</span>
-                      <p className="text-xs text-muted-foreground">{event.date}</p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {event.details.map((detail, i) => (
+                        <span
+                          key={i}
+                          className="rounded-full bg-muted px-3 py-1 text-xs"
+                        >
+                          {detail}
+                        </span>
+                      ))}
                     </div>
                   </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {event.details.map((detail, i) => (
-                      <span
-                        key={i}
-                        className="rounded-full bg-muted px-3 py-1 text-xs"
-                      >
-                        {detail}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

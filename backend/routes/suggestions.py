@@ -1,19 +1,21 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter
+from pydantic import BaseModel, Field
 from typing import List
 from utils.llm import llm
-import json
-import re
+from utils.route_utils import handle_error
 
 router = APIRouter(prefix="/suggestions", tags=["ai-suggestions"])
 
+# Pydantic Models for Structured Output
+class SuggestionResponse(BaseModel):
+    """AI-generated academic and side hustle suggestions"""
+    subjects: List[str] = Field(description="List of 6 core academic subjects for this major", min_items=6, max_items=6)
+    side_hustle_interests: List[str] = Field(description="List of 6 marketable skills/technologies", min_items=6, max_items=6)
+
+# Request Model
 class SuggestionRequest(BaseModel):
     degree: str
     major: str
-
-class SuggestionResponse(BaseModel):
-    subjects: List[str]
-    side_hustle_interests: List[str]
 
 @router.post("/generate", response_model=SuggestionResponse)
 async def generate_suggestions(request: SuggestionRequest):
@@ -21,76 +23,71 @@ async def generate_suggestions(request: SuggestionRequest):
     Generate academic subjects and side hustle interests based on degree/major using AI
     """
     try:
-        prompt = f"""
-You are an academic advisor AI. Based on the student's degree and major, suggest relevant subjects and side hustle interests.
+        # Create structured output LLM
+        structured_llm = llm.with_structured_output(SuggestionResponse)
+        
+        # Concise prompt
+        prompt = f"""You are an academic advisor AI. Based on the student's degree and major, suggest relevant subjects and side hustle interests.
 
 Degree: {request.degree}
 Major: {request.major}
 
-Provide suggestions in the following JSON format:
-{{
-  "subjects": ["subject1", "subject2", "subject3", "subject4", "subject5", "subject6"],
-  "side_hustle_interests": ["interest1", "interest2", "interest3", "interest4", "interest5", "interest6"]
-}}
-
-Guidelines:
-1. For subjects: Include EXACTLY 6 core subjects typically studied in this major.
-2. For side hustle interests: Include EXACTLY 6 skills/technologies that complement this degree and are marketable.
-3. Be specific and practical.
-4. Consider current industry trends.
-5. Return ONLY the JSON object, no additional text.
+Requirements:
+1. Suggest EXACTLY 6 core subjects typically studied in this major
+2. Suggest EXACTLY 6 marketable skills/technologies that complement this degree
+3. Be specific and practical
+4. Consider current industry trends
 
 Example for Computer Science:
 - Subjects: Data Structures, Algorithms, Database Systems, Operating Systems, Computer Networks, Software Engineering
-- Side Hustle Interests: Web Development, Mobile App Development, AI/ML, Cloud Computing, Cybersecurity, UI/UX Design
-"""
+- Side Hustle: Web Development, Mobile App Development, AI/ML, Cloud Computing, Cybersecurity, UI/UX Design"""
 
-        # Call LLM
-        response = llm.invoke(prompt)
-        content = response.content if hasattr(response, 'content') else str(response)
+        try:
+            # Get structured output
+            suggestions: SuggestionResponse = structured_llm.invoke(prompt)
+            return suggestions
         
-        # Extract JSON from response
-        json_match = re.search(r'\{.*\}', content, re.DOTALL)
-        if json_match:
-            result = json.loads(json_match.group())
-        else:
-            raise ValueError("Could not extract JSON from LLM response")
-        
-        return SuggestionResponse(
-            subjects=result.get("subjects", [])[:6],
-            side_hustle_interests=result.get("side_hustle_interests", [])[:6]
-        )
+        except Exception as e:
+            print(f"Structured output error: {e}")
+            # Return fallback
+            return create_fallback_suggestions(request.major)
     
     except Exception as e:
-        print(f"AI Suggestion Error: {str(e)}")
-        
-        # Fallback suggestions
-        fallback = {
-            "subjects": [
-                "Core Subject 1",
-                "Core Subject 2", 
-                "Core Subject 3",
-                "Elective 1",
-                "Elective 2"
-            ],
-            "side_hustle_interests": [
-                "Web Development",
-                "Data Analysis",
-                "Content Creation",
-                "Freelancing"
-            ]
-        }
-        
-        return SuggestionResponse(
-            subjects=fallback["subjects"],
-            side_hustle_interests=fallback["side_hustle_interests"]
-        )
+        raise handle_error(e, "AI Suggestion")
+
 
 @router.get("/health")
 async def health_check():
     """Check if the suggestions service is running"""
     return {
         "status": "healthy",
-        "service": "AI Suggestions",
-        "model": "gemini-2.5-flash-lite"
+        "service": "AI Suggestions (Structured Output)",
+        "model": "gemini-1.5-flash"
     }
+
+
+def create_fallback_suggestions(major: str) -> SuggestionResponse:
+    """Create fallback suggestions if LLM fails"""
+    # Basic fallback based on common majors
+    common_subjects = [
+        f"{major} Fundamentals",
+        f"Advanced {major}",
+        f"{major} Theory",
+        f"{major} Applications",
+        "Research Methods",
+        "Capstone Project"
+    ]
+    
+    common_interests = [
+        "Web Development",
+        "Data Analysis",
+        "Content Creation",
+        "Freelancing",
+        "Consulting",
+        "Online Teaching"
+    ]
+    
+    return SuggestionResponse(
+        subjects=common_subjects,
+        side_hustle_interests=common_interests
+    )

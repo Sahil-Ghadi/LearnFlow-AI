@@ -27,30 +27,6 @@ interface Reminder {
 
 // Sample reminders for demo
 const sampleReminders: Reminder[] = [
-    {
-        id: '1',
-        subject: 'Physics',
-        topic: 'Complete Electromagnetic Induction problems',
-        dueTime: new Date(Date.now() + 2 * 60 * 60 * 1000),
-        priority: 'high',
-        completed: false,
-    },
-    {
-        id: '2',
-        subject: 'Mathematics',
-        topic: 'Practice integration by parts',
-        dueTime: new Date(Date.now() + 4 * 60 * 60 * 1000),
-        priority: 'medium',
-        completed: false,
-    },
-    {
-        id: '3',
-        subject: 'Chemistry',
-        topic: 'Review organic reaction mechanisms',
-        dueTime: new Date(Date.now() + 6 * 60 * 60 * 1000),
-        priority: 'low',
-        completed: false,
-    },
 ];
 
 const priorityColors = {

@@ -93,6 +93,19 @@ export default function OnboardingPage() {
 
   const totalSteps = 3;
 
+  // Auto-fill name and email from Google auth
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        name: user.displayName || prev.name,
+        // If you want to use email as college initially, uncomment:
+        // college: user.email || prev.college
+      }));
+    }
+  }, []);
+
   useEffect(() => {
     if (step === 2 && formData.degree && aiSuggestions.subjects.length === 0) {
       fetchAISuggestions();

@@ -12,6 +12,10 @@ from routes.exams import router as exams_router
 from routes.learning import router as learning_router
 from routes.assessment import router as assessment_router
 from routes.stats import router as stats_router
+from routes.timeline import router as timeline_router
+from routes.analytics import router as analytics_router
+from routes.dashboard import router as dashboard_router
+from routes.chat import router as chat_router
 
 # Load environment variables
 load_dotenv()
@@ -41,6 +45,10 @@ app.include_router(exams_router)
 app.include_router(learning_router)
 app.include_router(assessment_router)
 app.include_router(stats_router)
+app.include_router(timeline_router)
+app.include_router(analytics_router)
+app.include_router(dashboard_router)
+app.include_router(chat_router)
 
 @app.get("/")
 def read_root():

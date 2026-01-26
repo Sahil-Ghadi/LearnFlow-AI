@@ -1,14 +1,27 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from typing import List, Optional, Dict
+from fastapi import APIRouter
+from pydantic import BaseModel, Field
+from typing import List
 from utils.llm import llm
+from utils.route_utils import handle_error
 from firebase_admin import firestore
-import json
 import uuid
 
 router = APIRouter(prefix="/assessment", tags=["assessment"])
 db = firestore.client()
 
+# Pydantic Models for Structured Output
+class MCQuestion(BaseModel):
+    """Multiple choice question"""
+    question: str = Field(description="The question text")
+    options: List[str] = Field(description="Four answer options", min_items=4, max_items=4)
+    correct_answer: int = Field(description="Index of correct option (0-3)", ge=0, le=3)
+    topic_tag: str = Field(description="Specific topic this question tests")
+
+class AssessmentQuestions(BaseModel):
+    """Collection of assessment questions"""
+    questions: List[MCQuestion] = Field(description="List of 10 MCQ questions", min_items=10, max_items=10)
+
+# Request Models
 class GenerateRequest(BaseModel):
     subject: str
     topics: List[str]
@@ -18,116 +31,141 @@ class Question(BaseModel):
     id: str
     question: str
     options: List[str]
-    correct_answer: int  # 0-3
+    correct_answer: int
     topic_tag: str
 
 class SubmitRequest(BaseModel):
     uid: str
     exam_id: str
     set_number: int
-    answers: List[Dict] # [{question_id: "id", selected: 0}]
+    answers: List[dict]  # [{question_id: "id", selected: 0}]
     questions: List[Question]
 
 @router.post("/generate", response_model=List[Question])
 async def generate_assessment(request: GenerateRequest):
-    try:
-        # Simplified: Always mixed difficulty for standard assessment
-        topics_str = ", ".join(request.topics)
-        
-        prompt = f"""
-        Generate 10 Multiple Choice Questions (MCQs) for the subject "{request.subject}".
-        Focus specifically on these topics: {topics_str}.
-        Difficulty Level: Mixed (Fundamental to Application-based).
-        
-        Return STRICT JSON format:
-        [
-            {{
-                "question": "Question text here?",
-                "options": ["Option A", "Option B", "Option C", "Option D"],
-                "correct_answer": 0,  // Index of correct option (0-3)
-                "topic_tag": "Specific Topic Name"
-            }}
-        ]
-        """
-        
-        response = llm.invoke(prompt)
-        content = response.content if hasattr(response, 'content') else str(response)
-        
-        # Clean markdown
-        clean_content = content.replace("```json", "").replace("```", "").strip()
-        start = clean_content.find('[')
-        end = clean_content.rfind(']')
-        
-        if start == -1 or end == -1:
-             raise ValueError("Failed to parse JSON")
-             
-        data = json.loads(clean_content[start:end+1])
-        
-        questions = []
-        for q in data:
-            questions.append({
-                "id": str(uuid.uuid4()),
-                "question": q['question'],
-                "options": q['options'],
-                "correct_answer": q['correct_answer'],
-                "topic_tag": q['topic_tag']
-            })
+    """Generate 10 MCQ questions using structured output with retry logic"""
+    max_retries = 3
+    
+    for attempt in range(max_retries):
+        try:
+            # Create structured output LLM with include_raw for better error handling
+            structured_llm = llm.with_structured_output(AssessmentQuestions, include_raw=True)
             
-        return questions
+            topics_str = ", ".join(request.topics)
+            
+            # More explicit prompt emphasizing completion
+            prompt = f"""Generate EXACTLY 10 complete Multiple Choice Questions for "{request.subject}".
 
-    except Exception as e:
-        print(f"Assessment Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+Topics to cover: {topics_str}
+
+CRITICAL REQUIREMENTS:
+1. Generate EXACTLY 10 questions - no more, no less
+2. EVERY question MUST have ALL of these fields:
+   - question: The question text
+   - options: EXACTLY 4 answer choices
+   - correct_answer: Index 0-3 of the correct option
+   - topic_tag: Which topic this tests
+3. DO NOT truncate or leave any question incomplete
+4. Mix difficulty levels (easy, medium, hard)
+5. Test understanding, not just memorization
+
+IMPORTANT: Complete ALL 10 questions fully before finishing!"""
+
+            # Get structured output
+            result = structured_llm.invoke(prompt)
+            
+            # Extract the parsed object
+            if isinstance(result, dict) and 'parsed' in result:
+                assessment = result['parsed']
+            else:
+                assessment = result
+            
+            # Validate we got exactly 10 questions
+            if not hasattr(assessment, 'questions') or len(assessment.questions) != 10:
+                print(f"Attempt {attempt + 1}: Got {len(assessment.questions) if hasattr(assessment, 'questions') else 0} questions, retrying...")
+                continue
+            
+            # Validate each question is complete
+            all_complete = True
+            for i, q in enumerate(assessment.questions):
+                if not all([
+                    hasattr(q, 'question') and q.question,
+                    hasattr(q, 'options') and len(q.options) == 4,
+                    hasattr(q, 'correct_answer') and 0 <= q.correct_answer <= 3,
+                    hasattr(q, 'topic_tag') and q.topic_tag
+                ]):
+                    print(f"Attempt {attempt + 1}: Question {i+1} incomplete, retrying...")
+                    all_complete = False
+                    break
+            
+            if not all_complete:
+                continue
+            
+            # All questions are complete, format and return
+            questions = []
+            for q in assessment.questions:
+                questions.append({
+                    "id": str(uuid.uuid4()),
+                    "question": q.question,
+                    "options": q.options,
+                    "correct_answer": q.correct_answer,
+                    "topic_tag": q.topic_tag
+                })
+            
+            print(f"Successfully generated {len(questions)} complete questions on attempt {attempt + 1}")
+            return questions
+        
+        except Exception as e:
+            print(f"Attempt {attempt + 1} failed: {str(e)}")
+            if attempt == max_retries - 1:
+                # Last attempt failed, use fallback
+                print("All attempts failed, using fallback questions")
+                return create_fallback_questions(request.subject, request.topics)
+            continue
+    
+    # If we somehow get here, return fallback
+    return create_fallback_questions(request.subject, request.topics)
+
 
 @router.post("/submit")
 async def submit_assessment(request: SubmitRequest):
+    """Submit and grade assessment"""
     try:
         correct_count = 0
         total = len(request.questions)
         weak_topics = []
         
-        # Grading
+        # Grade answers
         for q in request.questions:
             user_ans = next((a['selected'] for a in request.answers if a['question_id'] == q.id), -1)
             if user_ans == q.correct_answer:
                 correct_count += 1
             else:
                 weak_topics.append(q.topic_tag)
-                
+        
         accuracy = (correct_count / total) * 100
         
-        # Update User Stats
+        # Update Firestore
         user_ref = db.collection("user_profiles").document(request.uid)
-        
-        # Update Exam specific stats
         exam_ref = user_ref.collection("exams").document(request.exam_id)
         
-        # Simple overwrite/update for readiness based on latest assessment
-        # Can be made more complex (average history) later
+        # Update exam readiness
         exam_ref.update({
-            "readiness_score": accuracy, # Direct mapping for now as per request
+            "readiness_score": accuracy,
             "last_assessment_date": firestore.SERVER_TIMESTAMP
         })
         
-        # Update Global Weak Areas
+        # Update weak areas
         profile_doc = user_ref.get()
         current_weak_areas = profile_doc.to_dict().get('weak_areas', []) if profile_doc.exists else []
+        updated_weak_areas = (current_weak_areas + weak_topics)[-50:]  # Keep last 50
         
-        # Append new weak topics (Allow duplicates to track frequency)
-        # Keep last 50 entries to maintain history but avoid unlimited growth
-        updated_weak_areas = (current_weak_areas + weak_topics)[-50:]
+        user_ref.update({"weak_areas": updated_weak_areas})
         
-        user_ref.update({
-           "weak_areas": updated_weak_areas
-        })
-        
-        # Log performance point (for graph)
-        # In a real app, this goes to a subcollection. Here we might store it in a simplified way or just rely on component fetching.
-        # We will create a stats collection entry for history
-        stats_history_ref = user_ref.collection("stats_history")
-        stats_history_ref.add({
+        # Log performance history
+        user_ref.collection("stats_history").add({
             "date": firestore.SERVER_TIMESTAMP,
-            "exam_subject": request.exam_id, # using ID or could fetch name
+            "exam_subject": request.exam_id,
             "score": accuracy,
             "type": "assessment"
         })
@@ -141,5 +179,19 @@ async def submit_assessment(request: SubmitRequest):
         }
 
     except Exception as e:
-        print(f"Submission Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise handle_error(e, "Assessment Submission")
+
+
+def create_fallback_questions(subject: str, topics: List[str]) -> List[Question]:
+    """Create fallback questions if LLM fails"""
+    questions = []
+    for i in range(10):
+        topic = topics[i % len(topics)]
+        questions.append({
+            "id": str(uuid.uuid4()),
+            "question": f"Sample question {i+1} about {topic} in {subject}?",
+            "options": ["Option A", "Option B", "Option C", "Option D"],
+            "correct_answer": 0,
+            "topic_tag": topic
+        })
+    return questions

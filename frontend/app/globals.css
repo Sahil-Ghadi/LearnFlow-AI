@@ -40,37 +40,33 @@
   --chart-5: 340 75% 55%;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 142 70% 45%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
-    --sidebar: 222.2 84% 6%;
-    --mode-surface-elevated: 217.2 32.6% 12%;
-  }
-}
-
-/* Side hustle mode styling */
+/* Dark mode variables applied specifically to side-hustle mode */
 .side-hustle-mode {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 270 70% 60%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 142 70% 45%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 270 70% 60%;
+  --sidebar: 222.2 84% 6%;
+  --mode-surface-elevated: 217.2 32.6% 12%;
+
+  /* Side hustle specific gradients */
   --mode-gradient-start: 270 70% 60%;
   --mode-gradient-end: 340 75% 55%;
-  --primary: 270 70% 60%;
 }
 
 @theme inline {
@@ -104,10 +100,17 @@
   border-color: hsl(var(--border));
 }
 
+/* Smooth theme transition */
+html.side-hustle-mode,
+html {
+  transition: background-color 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), color 0.5s ease;
+}
+
 body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
   font-family: var(--font-sans);
+  transition: background-color 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 /* Custom utility classes */

@@ -1,12 +1,18 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter
+from pydantic import BaseModel, Field
 from typing import List, Optional
 from utils.llm import llm
+from utils.route_utils import handle_error
 from youtube_search import YoutubeSearch
-import json
 
 router = APIRouter(prefix="/learning", tags=["learning"])
 
+# Pydantic Models for Structured Output
+class SearchQuery(BaseModel):
+    """Optimized YouTube search query"""
+    query: str = Field(description="Single optimized YouTube search query for educational content")
+
+# Request/Response Models
 class RecommendationRequest(BaseModel):
     topic: str
     subject: str
@@ -22,32 +28,38 @@ class VideoResource(BaseModel):
 
 @router.post("/recommend", response_model=List[VideoResource])
 async def recommend_resources(request: RecommendationRequest):
+    """Recommend YouTube learning resources using AI-optimized search"""
     try:
-        # Step 1: Use LLM to optimize the search query
-        prompt = f"""
-        You are an expert tutor. A student needs to learn about "{request.topic}" in the subject "{request.subject}".
+        # Create structured output LLM
+        structured_llm = llm.with_structured_output(SearchQuery)
         
-        Generate ONE single, highly optimized YouTube search query that would yield the best educational videos for this specific concept.
-        Focus on "conceptual understanding" or "visual explanation".
+        # Concise prompt
+        prompt = f"""Generate ONE optimized YouTube search query for learning about "{request.topic}" in {request.subject}.
+
+Requirements:
+1. Focus on conceptual understanding and visual explanations
+2. Target educational content
+3. Be specific and clear
+4. Return only the search query text
+
+Example: For "Photosynthesis" in Biology, return: "photosynthesis explained animation visual"
+"""
+
+        try:
+            # Get optimized query
+            search_query: SearchQuery = structured_llm.invoke(prompt)
+            query = search_query.query.strip().replace('"', '')
+        except Exception as e:
+            print(f"Structured output error: {e}")
+            # Fallback to simple query
+            query = f"{request.topic} {request.subject} explained"
         
-        Return ONLY the query string, nothing else. No dictionary, no JSON. just the text.
-        """
-        
-        response = llm.invoke(prompt)
-        query = response.content if hasattr(response, 'content') else str(response)
-        query = query.strip().replace('"', '')
-        
-        # Step 2: Search YouTube using youtube_search library
+        # Search YouTube
         results = YoutubeSearch(query, max_results=4).to_dict()
 
         videos = []
         for item in results:
-            # item keys: id, thumbnails, title, long_desc, channel, duration, views, publish_time, url_suffix
-            
-            # Construct link
             link = f"https://www.youtube.com{item['url_suffix']}"
-            
-            # Get thumbnail (usually standard resolution is first)
             thumbnail = item['thumbnails'][0] if item.get('thumbnails') else ""
             
             videos.append({
@@ -63,5 +75,4 @@ async def recommend_resources(request: RecommendationRequest):
         return videos
 
     except Exception as e:
-        print(f"Learning Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise handle_error(e, "Learning Resources")

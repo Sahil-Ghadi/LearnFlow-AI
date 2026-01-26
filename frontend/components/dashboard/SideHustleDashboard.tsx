@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Code,
@@ -13,33 +14,14 @@ import {
 import { GlowCard, StatCard, ProgressBar, AgentBadge } from '@/components/ui/GlowCard';
 import { StudyReminders } from '@/components/StudyReminders';
 import { UpcomingDeadlines } from '@/components/UpcomingDeadlines';
+import { useMode } from '@/contexts/ModeContext';
 
-// Mock data for side hustle dashboard
-const skillProgress = [
-  { name: 'Web Development', progress: 60, icon: Code },
-  { name: 'Data Structures & Algorithms', progress: 40, icon: FolderKanban },
-  { name: 'AI & Machine Learning', progress: 25, icon: Zap },
-  { name: 'UI/UX Design', progress: 45, icon: Rocket },
-];
-
-const learningSources = [
-  { id: 1, source: 'YouTube: React Full Course', skill: 'Web Development', type: 'video', status: 'In Progress' },
-  { id: 2, source: 'Udemy: Complete Python Bootcamp', skill: 'AI/ML', type: 'course', status: 'Completed' },
-  { id: 3, source: 'LeetCode: Array Problems', skill: 'DSA', type: 'practice', status: 'In Progress' },
-  { id: 4, source: 'Figma: Design Fundamentals', skill: 'UI/UX', type: 'course', status: 'Queued' },
-];
-
-const assignedProjects = [
-  { id: 1, title: 'Build a Portfolio Website', difficulty: 'Beginner', estimatedTime: '8 hours', skills: ['HTML', 'CSS', 'React'] },
-  { id: 2, title: 'Create a CRUD Application', difficulty: 'Intermediate', estimatedTime: '12 hours', skills: ['Node.js', 'MongoDB', 'Express'] },
-  { id: 3, title: 'AI Chatbot with OpenAI', difficulty: 'Advanced', estimatedTime: '20 hours', skills: ['Python', 'API', 'NLP'] },
-];
-
-const activityAlerts = [
-  { id: 1, type: 'warning', message: 'No DSA practice in 5 days — revision scheduled automatically.', time: '1 hour ago' },
-  { id: 2, type: 'info', message: 'New project milestone unlocked in Web Development track.', time: '3 hours ago' },
-  { id: 3, type: 'success', message: 'Completed React Hooks module — next module queued.', time: '1 day ago' },
-];
+const iconMap: Record<string, any> = {
+  Code,
+  FolderKanban,
+  Zap,
+  Rocket
+};
 
 const difficultyColors = {
   Beginner: 'bg-accent/20 text-accent',
@@ -54,40 +36,82 @@ const statusColors = {
 };
 
 export function SideHustleDashboard() {
+  const { user } = useMode();
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!user) return;
+
+      try {
+        setLoading(true);
+        const response = await fetch(`http://localhost:8000/dashboard/sidehustle/${user.uid}`);
+
+        if (response.ok) {
+          const data = await response.json();
+          setDashboardData(data);
+        }
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchDashboardData();
+    }
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-pulse text-muted-foreground">Loading dashboard...</div>
+      </div>
+    );
+  }
+
+  const stats = dashboardData?.stats || {};
+  const skillProgress = dashboardData?.skill_progress || [];
+  const learningSources = dashboardData?.learning_sources || [];
+  const assignedProjects = dashboardData?.assigned_projects || [];
+  const activityAlerts = dashboardData?.activity_alerts || [];
+
   return (
     <motion.div
       key="side-hustle"
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ duration: 0.3 }}
+      initial={{ opacity: 0, scale: 1.05, filter: 'blur(10px)' }}
+      animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+      exit={{ opacity: 0, scale: 0.95, filter: 'blur(10px)', transition: { duration: 0.4, ease: "easeIn" } }}
+      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
       className="space-y-8"
     >
       {/* Stats Row */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Skills in Progress"
-          value="4"
+          value={stats.skills_in_progress?.toString() || "0"}
           icon={<Zap className="h-5 w-5 text-primary" />}
           delay={0}
         />
         <StatCard
           label="Projects Completed"
-          value="7"
+          value={stats.projects_completed?.toString() || "0"}
           icon={<FolderKanban className="h-5 w-5 text-primary" />}
           trend={{ value: 2, positive: true }}
           delay={0.1}
         />
         <StatCard
           label="Weekly Practice"
-          value="18h"
+          value={stats.weekly_practice || "0h"}
           icon={<Code className="h-5 w-5 text-primary" />}
           trend={{ value: 15, positive: true }}
           delay={0.2}
         />
         <StatCard
           label="Portfolio Ready"
-          value="65%"
+          value={stats.portfolio_ready || "0%"}
           icon={<Rocket className="h-5 w-5 text-primary" />}
           trend={{ value: 10, positive: true }}
           delay={0.3}
@@ -103,8 +127,8 @@ export function SideHustleDashboard() {
             <AgentBadge>AI Monitored</AgentBadge>
           </div>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            {skillProgress.map((skill, index) => {
-              const Icon = skill.icon;
+            {skillProgress.map((skill: any, index: number) => {
+              const Icon = iconMap[skill.icon] || Code;
               return (
                 <motion.div
                   key={skill.name}
@@ -133,7 +157,7 @@ export function SideHustleDashboard() {
             <h2 className="font-heading text-xl font-bold">Learning Sources</h2>
           </div>
           <div className="space-y-3">
-            {learningSources.map((source, index) => (
+            {learningSources.map((source: any, index: number) => (
               <motion.div
                 key={source.id}
                 initial={{ opacity: 0 }}
@@ -149,7 +173,7 @@ export function SideHustleDashboard() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">→ {source.skill}</span>
-                  <span className={`rounded-full px-2 py-0.5 text-xs ${statusColors[source.status as keyof typeof statusColors]}`}>
+                  <span className={`rounded-full px-2 py-0.5 text-xs ${statusColors[source.status as keyof typeof statusColors] || 'bg-muted text-muted-foreground'}`}>
                     {source.status}
                   </span>
                 </div>
@@ -168,7 +192,7 @@ export function SideHustleDashboard() {
             <AgentBadge>Assigned by AI Agent</AgentBadge>
           </div>
           <div className="space-y-4">
-            {assignedProjects.map((project, index) => (
+            {assignedProjects.map((project: any, index: number) => (
               <motion.div
                 key={project.id}
                 initial={{ opacity: 0, x: -10 }}
@@ -178,13 +202,13 @@ export function SideHustleDashboard() {
               >
                 <div className="mb-3 flex items-start justify-between">
                   <h3 className="font-medium">{project.title}</h3>
-                  <span className={`rounded-full px-2 py-0.5 text-xs ${difficultyColors[project.difficulty as keyof typeof difficultyColors]}`}>
+                  <span className={`rounded-full px-2 py-0.5 text-xs ${difficultyColors[project.difficulty as keyof typeof difficultyColors] || 'bg-muted text-muted-foreground'}`}>
                     {project.difficulty}
                   </span>
                 </div>
                 <p className="mb-3 text-sm text-muted-foreground">Est. {project.estimatedTime}</p>
                 <div className="flex flex-wrap gap-1">
-                  {project.skills.map((skill) => (
+                  {project.skills?.map((skill: string) => (
                     <span key={skill} className="rounded-md bg-muted px-2 py-0.5 text-xs">
                       {skill}
                     </span>
@@ -208,7 +232,7 @@ export function SideHustleDashboard() {
             <h2 className="font-heading text-xl font-bold">Skill Activity Monitor</h2>
           </div>
           <div className="space-y-4">
-            {activityAlerts.map((alert, index) => (
+            {activityAlerts.map((alert: any, index: number) => (
               <motion.div
                 key={alert.id}
                 initial={{ opacity: 0, y: 10 }}

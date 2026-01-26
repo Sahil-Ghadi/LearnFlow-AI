@@ -1,13 +1,15 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter
+from pydantic import BaseModel, Field
 from typing import List, Optional
-from utils.llm import llm
 from datetime import datetime, timedelta
-import json
-import re
+from agents.schemas import ExamInfo, StudyPlan
+from agents.college.exam_parser import parse_exam_info
+from agents.college.planner_agent import create_study_plan
+from utils.route_utils import handle_error
 
 router = APIRouter(prefix="/study", tags=["study-planner"])
 
+# Request/Response Models
 class StudyPlanRequest(BaseModel):
     user_id: str
     input_text: str
@@ -21,115 +23,80 @@ class StudyPlanResponse(BaseModel):
     message: str
 
 @router.post("/create-plan", response_model=StudyPlanResponse)
-async def create_study_plan(request: StudyPlanRequest):
+async def create_study_plan_route(request: StudyPlanRequest):
     """
-    Create a personalized study plan using LLM (optimized - single call)
+    Create a personalized study plan using AI agents with structured output
     """
     try:
-        # Single LLM call to do everything
-        prompt = f"""
-You are an expert study planner. Analyze the following exam information and create a comprehensive study plan.
-
-User Input: "{request.input_text}"
-
-Extract and provide a study plan in the following JSON format:
-{{
-  "exam": {{
-    "subject": "extracted subject name",
-    "exam_date": "YYYY-MM-DD format",
-    "topics": ["topic1", "topic2", "topic3"]
-  }},
-  "days_left": number of days until exam,
-  "urgency": "critical" (≤3 days) | "high" (≤7 days) | "medium" (≤14 days) | "low" (>14 days),
-  "plan": {{
-    "daily_plan": [
-      {{
-        "day": 1,
-        "tasks": ["specific task 1", "specific task 2", "specific task 3"]
-      }}
-    ],
-    "total_hours": estimated total study hours,
-    "priority_topics": ["most important topic 1", "topic 2", "topic 3"]
-  }},
-  "strategy": "cram_mode" (≤3 days) | "intensify" (≤7 days) | "normal" (>7 days)
-}}
-
-Guidelines:
-1. If no date is mentioned, assume exam is in 7 days
-2. Create realistic daily tasks based on the urgency level
-3. For critical urgency (≤3 days): 6 hours/day, focus on key concepts
-4. For high urgency (≤7 days): 4 hours/day, balanced coverage
-5. For medium/low urgency: 2-3 hours/day, comprehensive study
-6. Include specific, actionable tasks for each day
-7. Prioritize the most important topics first
-
-Return ONLY the JSON object, no additional text.
-"""
-
-        # Call LLM
-        response = llm.invoke(prompt)
-        content = response.content if hasattr(response, 'content') else str(response)
+        # Step 1: Parse exam info using structured output agent
+        exam_info: ExamInfo = parse_exam_info(request.input_text)
         
-        # Extract JSON from response
-        json_match = re.search(r'\{.*\}', content, re.DOTALL)
-        if json_match:
-            result = json.loads(json_match.group())
-        else:
-            raise ValueError("Could not extract JSON from LLM response")
+        # Step 2: Create study plan using structured output agent
+        study_plan: StudyPlan = create_study_plan(exam_info)
         
-        # Validate and return
+        # Step 3: Format response
         return StudyPlanResponse(
-            exam=result.get("exam"),
-            days_left=result.get("days_left"),
-            urgency=result.get("urgency"),
-            plan=result.get("plan"),
-            strategy=result.get("strategy"),
-            message="Study plan created successfully using AI"
+            exam={
+                "subject": exam_info.subject,
+                "exam_date": exam_info.exam_date,
+                "topics": exam_info.topics
+            },
+            days_left=exam_info.days_until_exam,
+            urgency=exam_info.urgency,
+            plan={
+                "daily_plan": [
+                    {"day": day.day_number, "tasks": day.tasks}
+                    for day in study_plan.daily_breakdown
+                ],
+                "total_hours": study_plan.total_study_hours,
+                "priority_topics": study_plan.priority_topics
+            },
+            strategy=study_plan.strategy,
+            message="Study plan created successfully using AI agents"
         )
     
     except Exception as e:
-        # Fallback to simple plan if LLM fails
-        print(f"LLM Error: {str(e)}")
-        
-        # Simple fallback
-        fallback_plan = {
-            "exam": {
-                "subject": "Subject",
-                "exam_date": (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d"),
-                "topics": ["Topic 1", "Topic 2", "Topic 3"]
-            },
-            "days_left": 7,
-            "urgency": "high",
-            "plan": {
-                "daily_plan": [
-                    {"day": i+1, "tasks": [f"Study session {i+1}", "Practice problems", "Review notes"]}
-                    for i in range(7)
-                ],
-                "total_hours": 28,
-                "priority_topics": ["Topic 1", "Topic 2", "Topic 3"]
-            },
-            "strategy": "intensify"
-        }
-        
-        return StudyPlanResponse(
-            exam=fallback_plan["exam"],
-            days_left=fallback_plan["days_left"],
-            urgency=fallback_plan["urgency"],
-            plan=fallback_plan["plan"],
-            strategy=fallback_plan["strategy"],
-            message=f"Study plan created (fallback mode due to: {str(e)[:100]})"
-        )
+        print(f"Study Plan Error: {str(e)}")
+        # Return fallback plan
+        return create_fallback_plan(request.input_text)
+
 
 @router.get("/health")
 async def health_check():
     """Check if the study planner service is running"""
     return {
         "status": "healthy",
-        "service": "Study Planner (LLM-Powered)",
+        "service": "Study Planner (AI Agents with Structured Output)",
         "model": "gemini-1.5-flash",
         "features": [
             "AI-powered exam parsing",
             "Intelligent study planning",
-            "Personalized recommendations"
+            "Personalized recommendations",
+            "Structured output validation"
         ]
     }
+
+
+def create_fallback_plan(input_text: str) -> StudyPlanResponse:
+    """Create a simple fallback plan if agents fail"""
+    fallback_date = datetime.now() + timedelta(days=7)
+    
+    return StudyPlanResponse(
+        exam={
+            "subject": "Subject",
+            "exam_date": fallback_date.strftime("%Y-%m-%d"),
+            "topics": ["Topic 1", "Topic 2", "Topic 3"]
+        },
+        days_left=7,
+        urgency="high",
+        plan={
+            "daily_plan": [
+                {"day": i+1, "tasks": [f"Study session {i+1}", "Practice problems", "Review notes"]}
+                for i in range(7)
+            ],
+            "total_hours": 28,
+            "priority_topics": ["Topic 1", "Topic 2", "Topic 3"]
+        },
+        strategy="intensify",
+        message="Study plan created (using fallback due to agent error)"
+    )
