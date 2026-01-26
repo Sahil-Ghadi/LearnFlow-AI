@@ -1,0 +1,315 @@
+import { motion } from 'framer-motion';
+import { X, Calendar, CheckCircle2, Circle, BookOpen, PlayCircle, Sparkles, Youtube, ExternalLink, Brain } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useMode } from '@/contexts/ModeContext';
+import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+
+interface SyllabusItem {
+    name: string;
+    completed: boolean;
+}
+
+interface ExamDetailsModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    exam: any; // Using any for simplicity as it matches the fetched structure
+    onUpdate: () => void;
+}
+
+import { AssessmentModal } from './AssessmentModal';
+
+export function ExamDetailsModal({ isOpen, onClose, exam, onUpdate }: ExamDetailsModalProps) {
+    const { user } = useMode();
+    const [activeTopicIdx, setActiveTopicIdx] = useState<number | null>(null);
+    const [recommendations, setRecommendations] = useState<any[]>([]);
+    const [isLoadingHelp, setIsLoadingHelp] = useState(false);
+    const [showAssessment, setShowAssessment] = useState(false);
+
+    const [localSyllabus, setLocalSyllabus] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (exam?.syllabus) {
+            setLocalSyllabus(exam.syllabus);
+        }
+    }, [exam]);
+
+    if (!isOpen || !exam) return null;
+
+    const handleToggleTopic = async (index: number, currentStatus: boolean) => {
+        // Optimistic Update
+        const newStatus = !currentStatus;
+        setLocalSyllabus(prev => prev.map((item, i) => i === index ? { ...item, completed: newStatus } : item));
+
+        try {
+            const response = await fetch(`http://localhost:8000/exams/${user?.uid}/${exam.id}/toggle`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    topic_index: index,
+                    completed: newStatus
+                })
+            });
+
+            if (!response.ok) throw new Error('Failed to update topic');
+
+            // Notify parent to refresh in background
+            onUpdate();
+
+        } catch (error) {
+            console.error("Error toggling topic:", error);
+            toast.error("Failed to update progress");
+            // Revert on error
+            setLocalSyllabus(prev => prev.map((item, i) => i === index ? { ...item, completed: currentStatus } : item));
+        }
+    };
+
+    const handleGetHelp = async (topic: string, index: number) => {
+        if (activeTopicIdx === index) {
+            setActiveTopicIdx(null); // toggle off
+            return;
+        }
+
+        setActiveTopicIdx(index);
+        setIsLoadingHelp(true);
+        setRecommendations([]);
+
+        try {
+            const response = await fetch('http://localhost:8000/learning/recommend', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    topic: topic,
+                    subject: exam.subject || "General"
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setRecommendations(data);
+            } else {
+                toast.error("Could not fetch recommendations");
+            }
+        } catch (error) {
+            console.error("Error fetching help:", error);
+            toast.error("Failed to get AI help");
+        } finally {
+            setIsLoadingHelp(false);
+        }
+    };
+
+    const totalTopics = localSyllabus.length;
+    const completedTopics = localSyllabus.filter(t => t.completed).length;
+    const progress = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
+    const readiness = exam.readiness_score ? Math.round(exam.readiness_score) : 0;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#111111] overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+            >
+                {/* Header */}
+                <div className="bg-white/5 p-6 border-b border-white/10 flex items-start justify-between shrink-0">
+                    <div>
+                        <div className="flex items-center gap-2 mb-2">
+                            <span className="px-2 py-1 rounded bg-primary/20 text-primary text-[10px] font-bold uppercase tracking-wider">
+                                {exam.subject}
+                            </span>
+                            {readiness > 0 && (
+                                <span className={cn(
+                                    "px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider",
+                                    readiness >= 70 ? "bg-green-500/20 text-green-500" : "bg-yellow-500/20 text-yellow-500"
+                                )}>
+                                    Readiness: {readiness}%
+                                </span>
+                            )}
+                        </div>
+                        <h2 className="text-2xl font-bold text-white mb-1">{exam.title}</h2>
+                        <div className="flex items-center gap-2 text-zinc-400 text-sm">
+                            <Calendar className="h-4 w-4" />
+                            <span>{new Date(exam.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="rounded-lg p-2 hover:bg-white/5 text-zinc-400 hover:text-white">
+                        <X className="h-5 w-5" />
+                    </button>
+                </div>
+
+                {/* content */}
+                <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
+
+                    {/* Progress Section */}
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-zinc-400">Syllabus Completion</span>
+                                <span className="text-white font-bold">{progress}%</span>
+                            </div>
+                            <div className="h-3 w-full bg-zinc-800 rounded-full overflow-hidden">
+                                <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${progress}%` }}
+                                    className={cn(
+                                        "h-full rounded-full transition-all duration-500",
+                                        progress >= 100 ? "bg-green-500" : "bg-primary"
+                                    )}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Assessment Button */}
+                        <Button
+                            className="w-full gap-2 font-bold relative overflow-hidden group"
+                            onClick={() => setShowAssessment(true)}
+                            disabled={progress < 10} // Unlock after some progress
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-white/10 to-primary/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                            <Brain className="h-4 w-4" />
+                            Take AI Assessment
+                        </Button>
+                        {progress < 10 && (
+                            <p className="text-[10px] text-center text-zinc-600">
+                                Complete 10% of syllabus to unlock assessment
+                            </p>
+                        )}
+                        <p className="text-xs text-zinc-500 text-center mt-1">
+                            {completedTopics} of {totalTopics} topics covered
+                        </p>
+                    </div>
+
+                    {/* Topics List */}
+                    <div className="space-y-3">
+                        <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                            <BookOpen className="h-4 w-4 text-primary" />
+                            Topics Checklist
+                        </h3>
+
+                        <div className="space-y-2">
+                            {localSyllabus && localSyllabus.map((topic: any, idx: number) => (
+                                <div key={idx} className="space-y-2">
+                                    <div
+                                        className={cn(
+                                            "flex items-center justify-between p-3 rounded-xl border transition-all group",
+                                            topic.completed
+                                                ? "bg-primary/10 border-primary/20"
+                                                : "bg-white/5 border-white/5 hover:border-white/20"
+                                        )}
+                                    >
+                                        <div
+                                            className="flex items-center gap-3 cursor-pointer flex-1"
+                                            onClick={() => handleToggleTopic(idx, topic.completed)}
+                                        >
+                                            <div className={cn(
+                                                "h-5 w-5 rounded-full flex items-center justify-center transition-colors",
+                                                topic.completed ? "text-primary" : "text-zinc-600 group-hover:text-zinc-400"
+                                            )}>
+                                                {topic.completed ? <CheckCircle2 className="h-5 w-5" /> : <Circle className="h-5 w-5" />}
+                                            </div>
+                                            <span className={cn(
+                                                "text-sm font-medium transition-colors select-none",
+                                                topic.completed ? "text-white line-through opacity-70" : "text-zinc-300"
+                                            )}>
+                                                {topic.name}
+                                            </span>
+                                        </div>
+
+                                        {!topic.completed && (
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => handleGetHelp(topic.name, idx)}
+                                                className="h-7 w-7 p-0 rounded-full hover:bg-primary/20 text-zinc-500 hover:text-primary"
+                                                title="Get AI Recommendations"
+                                            >
+                                                <PlayCircle className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                    </div>
+
+                                    {/* Recommendations Section */}
+                                    {activeTopicIdx === idx && (
+                                        <motion.div
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            className="ml-4 pl-4 border-l-2 border-primary/20 overflow-hidden"
+                                        >
+                                            {isLoadingHelp ? (
+                                                <div className="py-4 flex flex-col items-center justify-center gap-2 text-xs text-zinc-500 animate-pulse bg-zinc-900/50 rounded-xl">
+                                                    <Sparkles className="h-4 w-4 text-primary" />
+                                                    <p>Finding best tutorials...</p>
+                                                </div>
+                                            ) : recommendations && recommendations.length > 0 ? (
+                                                <div className="py-2 space-y-3">
+                                                    <p className="text-xs font-bold text-primary flex items-center gap-1">
+                                                        <Youtube className="h-3 w-3" />
+                                                        Recommended Videos
+                                                    </p>
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        {recommendations.map((video: any, i: number) => (
+                                                            <a
+                                                                key={i}
+                                                                href={video.link}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="group/card block rounded-lg overflow-hidden bg-black/40 border border-white/5 hover:border-primary/30 hover:bg-white/5 transition-all"
+                                                            >
+                                                                {/* Thumbnail */}
+                                                                <div className="relative aspect-video w-full overflow-hidden bg-zinc-800">
+                                                                    {video.thumbnail ? (
+                                                                        <img src={video.thumbnail} alt={video.title} className="h-full w-full object-cover opacity-80 group-hover/card:opacity-100 transition-opacity" />
+                                                                    ) : (
+                                                                        <div className="h-full w-full flex items-center justify-center text-zinc-600">
+                                                                            <Youtube className="h-8 w-8" />
+                                                                        </div>
+                                                                    )}
+                                                                    <div className="absolute bottom-1 right-1 px-1 py-0.5 bg-black/80 rounded text-[9px] font-mono text-white">
+                                                                        {video.duration}
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Content */}
+                                                                <div className="p-2 space-y-1">
+                                                                    <h4 className="text-[11px] font-medium text-zinc-200 line-clamp-2 leading-tight group-hover/card:text-primary transition-colors">
+                                                                        {video.title}
+                                                                    </h4>
+                                                                    <div className="flex items-center justify-between text-[10px] text-zinc-500">
+                                                                        <span className="truncate max-w-[60%]">{video.channel}</span>
+                                                                        <span>{video.viewCount} views</span>
+                                                                    </div>
+                                                                </div>
+                                                            </a>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="py-2 text-center text-xs text-zinc-600 italic">
+                                                    No videos found for this topic.
+                                                </div>
+                                            )}
+                                        </motion.div>
+                                    )}
+                                </div>
+                            ))}
+
+                            {(!localSyllabus || localSyllabus.length === 0) && (
+                                <p className="text-center text-zinc-500 text-sm py-4 italic">No topics listed.</p>
+                            )}
+                        </div>
+                    </div>
+
+                </div>
+            </motion.div>
+
+            <AssessmentModal
+                isOpen={showAssessment}
+                onClose={() => setShowAssessment(false)}
+                exam={exam}
+                onUpdate={onUpdate}
+            />
+        </div>
+    );
+}

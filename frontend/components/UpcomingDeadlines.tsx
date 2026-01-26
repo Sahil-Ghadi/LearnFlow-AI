@@ -8,10 +8,14 @@ import {
     FileText,
     FolderKanban,
     Clock,
-    AlertCircle
+    Plus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMode } from '@/contexts/ModeContext';
+import { useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { AddExamModal } from '@/components/dashboard/Exams/AddExamModal';
+import { ExamDetailsModal } from '@/components/dashboard/Exams/ExamDetailsModal';
 
 interface Deadline {
     id: string;
@@ -95,9 +99,61 @@ const categoryColors = {
     project: 'bg-accent/10 text-accent border-accent/30',
 };
 
-export function UpcomingDeadlines() {
-    const { mode } = useMode();
-    const deadlines = mode === 'academic' ? academicDeadlines : sideHustleDeadlines;
+export function UpcomingDeadlines({ onRefreshStats }: { onRefreshStats?: () => void }) {
+    const { user, mode } = useMode();
+    const [deadlines, setDeadlines] = useState<Deadline[]>([]);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    // Initial mock data for side-hustle only (since we only implemented exam backend)
+    const sideHustleDeadlines: Deadline[] = [
+        {
+            id: '1',
+            title: 'Portfolio Website',
+            dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+            category: 'project',
+            subject: 'Web Development',
+            progress: 70,
+        },
+        // ... (can keep other mock data or fetch properly later)
+    ];
+
+    const fetchExams = async () => {
+        if (!user?.uid) return;
+        try {
+            const response = await fetch(`http://localhost:8000/exams/list/${user.uid}`);
+            if (response.ok) {
+                const data = await response.json();
+                const fetchedExams: Deadline[] = data.map((exam: any) => ({
+                    id: exam.id,
+                    title: exam.title,
+                    dueDate: new Date(exam.date),
+                    date: exam.date, // keep original string for modal
+                    category: 'exam',
+                    subject: exam.subject,
+                    progress: exam.total_topics > 0 ? Math.round((exam.completed_topics / exam.total_topics) * 100) : 0,
+                    syllabus: exam.syllabus,
+                    total_topics: exam.total_topics,
+                    completed_topics: exam.completed_topics
+                }));
+                setDeadlines(fetchedExams);
+            }
+        } catch (error) {
+            console.error("Failed to fetch exams", error);
+        }
+    };
+
+    // Fetch on mount and when mode changes
+    useEffect(() => {
+        if (mode === 'academic') {
+            fetchExams();
+        } else {
+            setDeadlines(sideHustleDeadlines);
+        }
+    }, [user?.uid, mode]);
+
+    const activeDeadlines = deadlines; // Already switched in useEffect
+
+    const [selectedExam, setSelectedExam] = useState<Deadline | null>(null);
 
     const formatDaysUntil = (date: Date) => {
         const now = new Date();
@@ -106,6 +162,7 @@ export function UpcomingDeadlines() {
 
         if (days === 0) return 'Today';
         if (days === 1) return 'Tomorrow';
+        if (days < 0) return 'Overdue';
         if (days < 7) return `${days} days`;
         return `${Math.ceil(days / 7)} week${days >= 14 ? 's' : ''}`;
     };
@@ -117,26 +174,44 @@ export function UpcomingDeadlines() {
         return 'text-muted-foreground';
     };
 
-    const sortedDeadlines = [...deadlines].sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+    const sortedDeadlines = [...activeDeadlines].sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
 
     return (
-        <div className="rounded-xl border border-border bg-card p-6 shadow-soft">
+        <div className="rounded-xl border border-border bg-card p-6 shadow-soft h-full flex flex-col">
             {/* Header */}
-            <div className="mb-4 flex items-center gap-2">
-                <div className="icon-container">
-                    <Calendar className="h-5 w-5 text-primary" />
+            <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <div className="icon-container">
+                        <Calendar className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                        <h3 className="font-heading font-bold">Upcoming Deadlines</h3>
+                        <p className="text-xs text-muted-foreground">
+                            {activeDeadlines.length} {mode === 'academic' ? 'academic' : 'project'} deadlines
+                        </p>
+                    </div>
                 </div>
-                <div>
-                    <h3 className="font-heading font-bold">Upcoming Deadlines</h3>
-                    <p className="text-xs text-muted-foreground">
-                        {deadlines.length} {mode === 'academic' ? 'academic' : 'project'} deadlines
-                    </p>
-                </div>
+                {mode === 'academic' && (
+                    <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0 rounded-full hover:bg-primary/10 hover:text-primary"
+                        onClick={() => setIsModalOpen(true)}
+                    >
+                        <Plus className="h-5 w-5" />
+                    </Button>
+                )}
             </div>
 
             {/* Deadlines List */}
-            <div className="space-y-3">
-                {sortedDeadlines.map((deadline, index) => {
+            <div className="space-y-3 flex-1 overflow-y-auto pr-1">
+                {sortedDeadlines.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-40 text-center opacity-60">
+                        <Calendar className="h-10 w-10 mb-2 text-zinc-600" />
+                        <p className="text-sm font-medium">No upcoming exams</p>
+                        <p className="text-xs">Click + to add one</p>
+                    </div>
+                ) : sortedDeadlines.map((deadline, index) => {
                     const Icon = categoryIcons[deadline.category];
                     const daysUntil = formatDaysUntil(deadline.dueDate);
                     const urgencyColor = getUrgencyColor(deadline.dueDate);
@@ -145,11 +220,23 @@ export function UpcomingDeadlines() {
                     return (
                         <motion.div
                             key={deadline.id}
+                            layoutId={deadline.id}
+                            onClick={() => {
+                                // Only open details for exams that are academic
+                                if (deadline.category === 'exam') {
+                                    // Fetch full details (including syllabus which might be needed if we only fetched summary)
+                                    // But here we rely on the list having mostly what we need, or the modal fetches fresher data?
+                                    // Actually, we need the full syllabus list which we might have stored in 'deadline' object or need to fetch.
+                                    // The list API returned syllabus arrays, so we should map that to the deadline object if we want to pass it.
+                                    // Let's assume fetchExams included it. We need to update the fetchExams logic to include 'syllabus' in the mapped object.
+                                    setSelectedExam(deadline);
+                                }
+                            }}
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.1 }}
                             className={cn(
-                                'group rounded-lg border p-4 transition-all hover:shadow-md',
+                                'group rounded-lg border p-4 transition-all hover:shadow-md cursor-pointer',
                                 isUrgent ? 'border-destructive/50 bg-destructive/5' : 'border-border'
                             )}
                         >
@@ -178,7 +265,7 @@ export function UpcomingDeadlines() {
                                     {deadline.progress !== undefined && (
                                         <div className="mt-3">
                                             <div className="mb-1 flex items-center justify-between text-xs">
-                                                <span className="text-muted-foreground">Progress</span>
+                                                <span className="text-muted-foreground">Syllabus Covered</span>
                                                 <span className="font-medium">{deadline.progress}%</span>
                                             </div>
                                             <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
@@ -188,7 +275,7 @@ export function UpcomingDeadlines() {
                                                     transition={{ duration: 0.8, delay: 0.2 + index * 0.1 }}
                                                     className={cn(
                                                         'h-full rounded-full',
-                                                        deadline.progress >= 70 ? 'bg-accent' : deadline.progress >= 40 ? 'bg-primary' : 'bg-destructive'
+                                                        deadline.progress >= 70 ? 'bg-green-500' : deadline.progress >= 40 ? 'bg-primary' : 'bg-destructive'
                                                     )}
                                                 />
                                             </div>
@@ -196,49 +283,31 @@ export function UpcomingDeadlines() {
                                     )}
                                 </div>
                             </div>
-
-                            {/* Urgent Warning */}
-                            {isUrgent && (
-                                <motion.div
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: 'auto' }}
-                                    className="mt-3 flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2"
-                                >
-                                    <AlertCircle className="h-3.5 w-3.5 text-destructive" />
-                                    <span className="text-xs text-destructive font-medium">
-                                        {deadline.progress !== undefined && deadline.progress < 50
-                                            ? 'Low progress - prioritize this!'
-                                            : 'Due soon - stay focused!'}
-                                    </span>
-                                </motion.div>
-                            )}
                         </motion.div>
                     );
                 })}
             </div>
 
-            {/* Summary */}
-            <div className="mt-4 grid grid-cols-3 gap-2">
-                {(['exam', 'assignment', 'project'] as const).map((cat) => {
-                    const count = deadlines.filter(d => d.category === cat).length;
-                    if (count === 0) return null;
-                    const Icon = categoryIcons[cat];
-                    return (
-                        <div
-                            key={cat}
-                            className={cn(
-                                'flex items-center justify-center gap-1.5 rounded-lg border py-2',
-                                categoryColors[cat]
-                            )}
-                        >
-                            <Icon className="h-3.5 w-3.5" />
-                            <span className="text-xs font-medium capitalize">
-                                {count} {cat}{count > 1 ? 's' : ''}
-                            </span>
-                        </div>
-                    );
-                })}
-            </div>
+            <AddExamModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSuccess={fetchExams}
+            />
+
+            <ExamDetailsModal
+                isOpen={!!selectedExam}
+                onClose={() => setSelectedExam(null)}
+                exam={selectedExam} // Note: This needs to have the 'syllabus' property.
+                onUpdate={() => {
+                    fetchExams();
+                    onRefreshStats?.();
+                    // Do NOT close the modal so user can see results
+                    // Ideally we update the selectedExam with new data, but for now keeping it open allows the AssessmentModal to show results.
+                    // If we want to refresh the background data in the details modal, we'd need to re-find the exam in the new 'deadlines' list.
+                    // But since 'fetchExams' is async, 'deadlines' won't be updated yet.
+                    // For the hackathon, just triggering the refreshes is enough to show "stats updated" on the dashboard when they eventually close it.
+                }}
+            />
         </div>
     );
 }

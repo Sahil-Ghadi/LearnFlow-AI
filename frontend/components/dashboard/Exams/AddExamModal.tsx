@@ -1,0 +1,185 @@
+'use client';
+
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { X, Calendar, BookOpen, Plus, Sparkles, GraduationCap } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useMode } from '@/contexts/ModeContext';
+import { toast } from 'sonner';
+
+interface AddExamModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSuccess: () => void;
+}
+
+export function AddExamModal({ isOpen, onClose, onSuccess }: AddExamModalProps) {
+    const { user, userProfile } = useMode();
+    const [isLoading, setIsLoading] = useState(false);
+
+    const [formData, setFormData] = useState({
+        subject: '',
+        title: '',
+        date: '',
+        syllabus: '',
+    });
+
+    const subjects = userProfile?.academicSubjects || [];
+
+    const handleSubmit = async () => {
+        if (!formData.subject || !formData.date || !formData.title) {
+            toast.error("Please fill in all required fields");
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            // Parse syllabus topics (split by commas or newlines)
+            const syllabusList = formData.syllabus
+                .split(/[\n,]/)
+                .map(s => s.trim())
+                .filter(s => s.length > 0)
+                .map(s => ({ name: s, completed: false }));
+
+            const response = await fetch('http://localhost:8000/exams/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    uid: user?.uid,
+                    subject: formData.subject,
+                    title: formData.title,
+                    date: formData.date,
+                    syllabus: syllabusList
+                })
+            });
+
+            if (!response.ok) throw new Error('Failed to create exam');
+
+            toast.success('Exam added successfully! 📅');
+            onSuccess();
+            onClose();
+
+            // Reset form
+            setFormData({
+                subject: '',
+                title: '',
+                date: '',
+                syllabus: '',
+            });
+
+        } catch (error) {
+            console.error('Error creating exam:', error);
+            toast.error('Failed to add exam');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#111111] p-6 shadow-2xl"
+            >
+                <div className="mb-6 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                            <GraduationCap className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-white">Add Upcoming Exam</h2>
+                            <p className="text-xs text-zinc-400">Track your preparation and deadlines</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="rounded-lg p-2 hover:bg-white/5 text-zinc-400 hover:text-white">
+                        <X className="h-5 w-5" />
+                    </button>
+                </div>
+
+                <div className="space-y-4">
+
+                    <div className="grid grid-cols-2 gap-4">
+                        {/* Subject Select */}
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase tracking-wider text-zinc-500">Subject</Label>
+                            <Select
+                                value={formData.subject}
+                                onValueChange={(val) => setFormData({ ...formData, subject: val })}
+                            >
+                                <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                                    <SelectValue placeholder="Select Subject" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-zinc-900 border-white/10 overflow-hidden">
+                                    {subjects.map(sub => (
+                                        <SelectItem key={sub} value={sub} className="text-white focus:bg-white/10 cursor-pointer">{sub}</SelectItem>
+                                    ))}
+                                    {subjects.length === 0 && (
+                                        <SelectItem value="General" className="text-white">General</SelectItem>
+                                    )}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Exam Date */}
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase tracking-wider text-zinc-500">Exam Date</Label>
+                            <Input
+                                type="date"
+                                value={formData.date}
+                                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                className="bg-white/5 border-white/10 text-white focus:border-primary appearance-none"
+                                style={{ colorScheme: 'dark' }}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Exam Title */}
+                    <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider text-zinc-500">Exam Title / Description</Label>
+                        <Input
+                            placeholder="e.g. Mid-Term, Finals, Unit Test 1"
+                            value={formData.title}
+                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                            className="bg-white/5 border-white/10 text-white focus:border-primary"
+                        />
+                    </div>
+
+                    {/* Syllabus */}
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-xs font-bold uppercase tracking-wider text-zinc-500">Syllabus Topics</Label>
+                            <span className="text-[10px] text-zinc-600">Separate by comma or newline</span>
+                        </div>
+                        <Textarea
+                            placeholder="List the main topics... e.g.
+Algebra
+Calculus
+Trigonometry"
+                            value={formData.syllabus}
+                            onChange={(e) => setFormData({ ...formData, syllabus: e.target.value })}
+                            className="resize-none bg-white/5 border-white/10 text-white focus:border-primary h-32 font-mono text-sm"
+                        />
+                    </div>
+                </div>
+
+                <div className="mt-8">
+                    <Button
+                        onClick={handleSubmit}
+                        disabled={isLoading}
+                        className="w-full h-12 text-base font-bold bg-primary hover:bg-primary/90 text-white rounded-xl shadow-[0_0_20px_rgba(var(--primary-rgb),0.3)] transition-all active:scale-[0.98]"
+                    >
+                        {isLoading ? 'Adding Exam...' : 'Add to Schedule'}
+                    </Button>
+                </div>
+            </motion.div>
+        </div>
+    );
+}

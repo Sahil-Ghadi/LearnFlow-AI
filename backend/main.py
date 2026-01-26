@@ -7,6 +7,11 @@ from routes.auth import router as auth_router
 from routes.profile import router as profile_router
 from routes.college import router as study_router
 from routes.suggestions import router as suggestions_router
+from routes.planner import router as planner_router
+from routes.exams import router as exams_router
+from routes.learning import router as learning_router
+from routes.assessment import router as assessment_router
+from routes.stats import router as stats_router
 
 # Load environment variables
 load_dotenv()
@@ -31,6 +36,11 @@ app.include_router(auth_router)
 app.include_router(profile_router)
 app.include_router(study_router)
 app.include_router(suggestions_router)
+app.include_router(planner_router)
+app.include_router(exams_router)
+app.include_router(learning_router)
+app.include_router(assessment_router)
+app.include_router(stats_router)
 
 @app.get("/")
 def read_root():
