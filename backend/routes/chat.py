@@ -52,20 +52,20 @@ async def get_my_schedule(uid: str) -> str:
 @tool
 async def generate_new_schedule(uid: str, instructions: str) -> str:
     """
-    Generate a NEW study schedule based on user instructions. 
-    instructions should contain things like 'start at 9am', 'finish at 5pm', 'focus on math', etc.
-    If specific times aren't given, use defaults (9am-9pm).
+    Generate/Update a study schedule based on user instructions. 
+    instructions should contain things like 'start at 9am', 'focus on math', OR changes like 'switch Monday math to biology'.
+    Default behavior: Weekly schedule, 1 hour per day, based on subjects.
     """
     try:
         # 1. Parse instructions to extract constraints/times using a quick LLM call or regex
         # For now, we'll just pass the raw instructions as constraints
         settings = PlannerSettings(
             uid=uid,
-            available_hours=5, # Default
+            available_hours=1, # Default as requested: 1 hr per day
             start_time="09:00",
             end_time="21:00",
             constraints=instructions,
-            view_mode="daily"
+            view_mode="weekly" # Default as requested: weekly schedule
         )
         
         # 2. Call the generator
@@ -120,7 +120,7 @@ SYSTEM_PROMPT = """You are LearnFlow AI, an intelligent academic assistant.
 Your goal is to help the student manage their studies, schedule, and deadlines.
 You have access to tools to:
 1. View their schedule (`get_my_schedule`)
-2. Generate a NEW schedule (`generate_new_schedule`) - Only do this if explicitly asked to "create" or "generate" or "make" a schedule/plan.
+2. Generate/Modify schedule (`generate_new_schedule`) - Use this to create a fresh schedule OR to apply changes to the existing one (e.g. "change monday to math"). Defaults to Weekly, 1 hr/day.
 3. Add deadlines (`add_deadline`)
 4. View deadlines (`get_upcoming_deadlines`)
 
@@ -142,10 +142,13 @@ async def chat_message(request: ChatRequest):
         # For a truly stateful chat, we'd fetch history from DB. 
         # For now, we'll behave as a stateless agent per turn + context
         
+        # Get current date/time for context
+        now = datetime.now().isoformat()
+        
         inputs = {
             "messages": [
                 SystemMessage(content=SYSTEM_PROMPT),
-                HumanMessage(content=f"User ID: {request.uid}\nUser Name: {request.user_name}\nRequest: {request.message}")
+                HumanMessage(content=f"Current Date/Time: {now}\nUser ID: {request.uid}\nUser Name: {request.user_name}\nRequest: {request.message}")
             ]
         }
         

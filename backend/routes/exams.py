@@ -87,14 +87,16 @@ async def toggle_topic(uid: str, exam_id: str, request: ToggleTopicRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/list/{uid}", response_model=List[ExamResponse])
-async def list_exams(uid: str):
+@router.get("/list/{uid}", response_model=List[dict])
+async def list_exams(uid: str, category: Optional[str] = None):
     try:
+        # 1. Fetch Exams
         exams_ref = db.collection("user_profiles").document(uid).collection("exams")
-        docs = exams_ref.stream()
+        exams_docs = exams_ref.stream()
         
-        exams = []
-        for doc in docs:
+        all_items = []
+        
+        for doc in exams_docs:
             data = doc.to_dict()
             # Handle legacy syllabus format (list of strings)
             if 'syllabus' in data and isinstance(data['syllabus'], list):
@@ -106,13 +108,48 @@ async def list_exams(uid: str):
                         new_syllabus.append(item)
                 data['syllabus'] = new_syllabus
 
-            exams.append({**data, "id": doc.id})
+            all_items.append({
+                **data, 
+                "id": doc.id,
+                "category": "exam",
+                # ensure date field exists for sorting
+                "date": data.get("date", "") 
+            })
             
-        # Sort by date
-        exams.sort(key=lambda x: x.get('date', ''))
+        # 2. Fetch General Deadlines (from chat/assistant)
+        deadlines_ref = db.collection("user_profiles").document(uid).collection("deadlines")
+        # Filter partially if needed, but for now get all active ones
+        deadlines_docs = deadlines_ref.where("completed", "==", False).stream()
         
-        return exams
+        for doc in deadlines_docs:
+            data = doc.to_dict()
+            # Map deadline fields to match exam fields where possible
+            # 'due_date' -> 'date'
+            
+            all_items.append({
+                "id": doc.id,
+                "title": data.get("title", "Untitled"),
+                "subject": data.get("subject", "General"),
+                "date": data.get("due_date", ""), # Map to 'date' so frontend can sort/display
+                "category": "assignment", # Default category for these
+                "progress": 0, # No granular progress for simple deadlines yet
+                "syllabus": [], # No syllabus
+                "total_topics": 0,
+                "completed_topics": 0,
+                "created_at": data.get("created_at", "")
+            })
+
+            
+        # Filter by category if requested
+        if category:
+            all_items = [item for item in all_items if item["category"] == category]
+
+        # Sort by date
+        all_items.sort(key=lambda x: x.get('date', ''))
+        
+        return all_items
     except Exception as e:
+        print(f"Error fetching exams/deadlines: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/{uid}/{exam_id}")

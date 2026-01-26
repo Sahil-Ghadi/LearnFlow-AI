@@ -120,21 +120,26 @@ export function UpcomingDeadlines({ onRefreshStats }: { onRefreshStats?: () => v
     const fetchExams = async () => {
         if (!user?.uid) return;
         try {
-            const response = await fetch(`http://localhost:8000/exams/list/${user.uid}`);
+            const response = await fetch(`http://localhost:8000/exams/list/${user.uid}?t=${Date.now()}`);
             if (response.ok) {
                 const data = await response.json();
-                const fetchedExams: Deadline[] = data.map((exam: any) => ({
-                    id: exam.id,
-                    title: exam.title,
-                    dueDate: new Date(exam.date),
-                    date: exam.date, // keep original string for modal
-                    category: 'exam',
-                    subject: exam.subject,
-                    progress: exam.total_topics > 0 ? Math.round((exam.completed_topics / exam.total_topics) * 100) : 0,
-                    syllabus: exam.syllabus,
-                    total_topics: exam.total_topics,
-                    completed_topics: exam.completed_topics
-                }));
+                const fetchedExams: Deadline[] = data.map((exam: any) => {
+                    let parsedDate = new Date(exam.date);
+                    if (isNaN(parsedDate.getTime())) parsedDate = new Date(); // Fallback
+
+                    return {
+                        id: exam.id,
+                        title: exam.title,
+                        dueDate: parsedDate,
+                        date: exam.date, // keep original string for modal
+                        category: exam.category || 'exam',
+                        subject: exam.subject,
+                        progress: exam.total_topics > 0 ? Math.round((exam.completed_topics / exam.total_topics) * 100) : (exam.progress || 0),
+                        syllabus: exam.syllabus,
+                        total_topics: exam.total_topics,
+                        completed_topics: exam.completed_topics
+                    };
+                });
                 setDeadlines(fetchedExams);
             }
         } catch (error) {
@@ -142,23 +147,39 @@ export function UpcomingDeadlines({ onRefreshStats }: { onRefreshStats?: () => v
         }
     };
 
-    // Fetch on mount and when mode changes
+    // Poll for updates
     useEffect(() => {
         if (mode === 'academic') {
             fetchExams();
+            const interval = setInterval(fetchExams, 2000); // Poll every 2 seconds
+            return () => clearInterval(interval);
         } else {
             setDeadlines(sideHustleDeadlines);
         }
     }, [user?.uid, mode]);
 
-    const activeDeadlines = deadlines; // Already switched in useEffect
+    const activeDeadlines = deadlines;
 
     const [selectedExam, setSelectedExam] = useState<Deadline | null>(null);
 
+    const parseDate = (dateString: string) => {
+        const d = new Date(dateString);
+        if (isNaN(d.getTime())) {
+            // Try to handle YYYY-MM-DD manually if needed, or fallback
+            return new Date(); // Fallback to now to avoid crash
+        }
+        return d;
+    };
+
     const formatDaysUntil = (date: Date) => {
         const now = new Date();
-        const diff = date.getTime() - now.getTime();
-        const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+        // Reset time components to compare just the dates
+        now.setHours(0, 0, 0, 0);
+        const target = new Date(date);
+        target.setHours(0, 0, 0, 0);
+
+        const diff = target.getTime() - now.getTime();
+        const days = Math.round(diff / (1000 * 60 * 60 * 24));
 
         if (days === 0) return 'Today';
         if (days === 1) return 'Tomorrow';
@@ -168,8 +189,15 @@ export function UpcomingDeadlines({ onRefreshStats }: { onRefreshStats?: () => v
     };
 
     const getUrgencyColor = (date: Date) => {
-        const days = Math.ceil((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-        if (days <= 2) return 'text-destructive';
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        const target = new Date(date);
+        target.setHours(0, 0, 0, 0);
+
+        const days = Math.round((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (days < 0) return 'text-destructive'; // Overdue
+        if (days <= 2) return 'text-destructive'; // Urgent
         if (days <= 5) return 'text-accent';
         return 'text-muted-foreground';
     };
@@ -185,7 +213,7 @@ export function UpcomingDeadlines({ onRefreshStats }: { onRefreshStats?: () => v
                         <Calendar className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                        <h3 className="font-heading font-bold">Upcoming Deadlines</h3>
+                        <h3 className="font-heading font-bold">Upcoming Deadlines / Exams</h3>
                         <p className="text-xs text-muted-foreground">
                             {activeDeadlines.length} {mode === 'academic' ? 'academic' : 'project'} deadlines
                         </p>
