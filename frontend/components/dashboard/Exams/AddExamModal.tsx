@@ -82,12 +82,12 @@ export function AddExamModal({ isOpen, onClose, onSuccess }: AddExamModalProps) 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-white/50 backdrop-blur-sm p-4">
             <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#111111] p-6 shadow-2xl"
+                className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl max-h-[90vh] z-100 overflow-y-auto"
             >
                 <div className="mb-6 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -95,11 +95,11 @@ export function AddExamModal({ isOpen, onClose, onSuccess }: AddExamModalProps) 
                             <GraduationCap className="h-5 w-5 text-primary" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold text-white">Add Upcoming Exam</h2>
-                            <p className="text-xs text-zinc-400">Track your preparation and deadlines</p>
+                            <h2 className="text-xl font-bold text-foreground">Add Upcoming Exam</h2>
+                            <p className="text-xs text-muted-foreground">Track your preparation and deadlines</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="rounded-lg p-2 hover:bg-white/5 text-zinc-400 hover:text-white">
+                    <button onClick={onClose} className="rounded-lg p-2 hover:bg-muted text-muted-foreground hover:text-foreground">
                         <X className="h-5 w-5" />
                     </button>
                 </div>
@@ -109,20 +109,20 @@ export function AddExamModal({ isOpen, onClose, onSuccess }: AddExamModalProps) 
                     <div className="grid grid-cols-2 gap-4">
                         {/* Subject Select */}
                         <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase tracking-wider text-zinc-500">Subject</Label>
+                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Subject</Label>
                             <Select
                                 value={formData.subject}
                                 onValueChange={(val) => setFormData({ ...formData, subject: val })}
                             >
-                                <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                                <SelectTrigger className="bg-muted border-border text-foreground">
                                     <SelectValue placeholder="Select Subject" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-zinc-900 border-white/10 overflow-hidden">
+                                <SelectContent className="bg-card border-border overflow-hidden">
                                     {subjects.map(sub => (
-                                        <SelectItem key={sub} value={sub} className="text-white focus:bg-white/10 cursor-pointer">{sub}</SelectItem>
+                                        <SelectItem key={sub} value={sub} className="text-foreground focus:bg-primary focus:text-white cursor-pointer">{sub}</SelectItem>
                                     ))}
                                     {subjects.length === 0 && (
-                                        <SelectItem value="General" className="text-white">General</SelectItem>
+                                        <SelectItem value="General" className="text-foreground focus:bg-primary focus:text-white cursor-pointer">General</SelectItem>
                                     )}
                                 </SelectContent>
                             </Select>
@@ -130,42 +130,38 @@ export function AddExamModal({ isOpen, onClose, onSuccess }: AddExamModalProps) 
 
                         {/* Exam Date */}
                         <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase tracking-wider text-zinc-500">Exam Date</Label>
+                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Exam Date</Label>
                             <Input
                                 type="date"
                                 value={formData.date}
                                 onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                className="bg-white/5 border-white/10 text-white focus:border-primary appearance-none"
-                                style={{ colorScheme: 'dark' }}
+                                className="bg-muted border-border text-foreground focus:border-primary appearance-none"
                             />
                         </div>
                     </div>
 
                     {/* Exam Title */}
                     <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase tracking-wider text-zinc-500">Exam Title / Description</Label>
+                        <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Exam Title / Description</Label>
                         <Input
                             placeholder="e.g. Mid-Term, Finals, Unit Test 1"
                             value={formData.title}
                             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                            className="bg-white/5 border-white/10 text-white focus:border-primary"
+                            className="bg-muted border-border text-foreground focus:border-primary"
                         />
                     </div>
 
                     {/* Syllabus */}
                     <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                            <Label className="text-xs font-bold uppercase tracking-wider text-zinc-500">Syllabus Topics</Label>
-                            <span className="text-[10px] text-zinc-600">Separate by comma or newline</span>
+                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Syllabus Topics</Label>
+                            <span className="text-[10px] text-muted-foreground">Separate by comma or newline</span>
                         </div>
                         <Textarea
-                            placeholder="List the main topics... e.g.
-Algebra
-Calculus
-Trigonometry"
+                            placeholder="List the main topics... e.g. Algebra, Calculus, Trigonometry"
                             value={formData.syllabus}
                             onChange={(e) => setFormData({ ...formData, syllabus: e.target.value })}
-                            className="resize-none bg-white/5 border-white/10 text-white focus:border-primary h-32 font-mono text-sm"
+                            className="resize-none bg-muted border-border text-foreground focus:border-primary h-32 text-sm"
                         />
                     </div>
                 </div>

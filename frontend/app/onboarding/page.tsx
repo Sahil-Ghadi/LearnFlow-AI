@@ -264,32 +264,32 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] text-zinc-100 p-6 overflow-hidden selection:bg-primary/30">
+    <div className="flex min-h-screen items-center justify-center bg-zinc-50 text-zinc-900 p-6 overflow-hidden selection:bg-primary/20">
       {/* Premium Background Elements */}
       <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/10 rounded-full blur-[120px] opacity-50" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-accent/10 rounded-full blur-[120px] opacity-50" />
-        <div className="absolute inset-0 bg-[#0a0a0a]/60 backdrop-blur-[2px]" />
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/20 rounded-full blur-[120px] opacity-40" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-accent/20 rounded-full blur-[120px] opacity-40" />
+        <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px]" />
       </div>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-[0.8fr_1.2fr] bg-[#111111]/90 backdrop-blur-2xl border border-white/5 rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.7)] overflow-hidden"
+        className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-[0.8fr_1.2fr] bg-white/80 backdrop-blur-2xl border border-zinc-200 rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] overflow-hidden"
       >
         {/* Left Panel: Progress & Branding */}
-        <div className="relative p-10 lg:p-14 flex flex-col justify-between bg-zinc-900/50 border-r border-white/5">
+        <div className="relative p-10 lg:p-14 flex flex-col justify-between bg-zinc-50/50 border-r border-zinc-200">
           <div>
             <div className="flex items-center gap-4 mb-12">
               <div className="p-3 rounded-2xl bg-primary shadow-[0_0_25px_rgba(var(--primary-rgb),0.3)]">
                 <Bot className="h-7 w-7 text-white" />
               </div>
-              <span className="font-heading text-xl font-bold tracking-tight text-white">LearnFlow AI</span>
+              <span className="font-heading text-xl font-bold tracking-tight text-zinc-900">LearnFlow AI</span>
             </div>
 
             <div className="space-y-10">
               <div className="relative">
-                <div className="absolute left-[15px] top-[40px] bottom-[40px] w-px bg-white/5" />
+                <div className="absolute left-[15px] top-[40px] bottom-[40px] w-px bg-zinc-200" />
 
                 {[
                   { id: 1, title: 'Identity', icon: User, desc: 'Your profile baseline' },
@@ -301,12 +301,12 @@ export default function OnboardingPage() {
                       "flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all duration-700 z-10",
                       step >= s.id
                         ? "border-primary bg-primary text-white shadow-[0_0_20px_rgba(var(--primary-rgb),0.5)]"
-                        : "border-white/10 bg-[#111111] text-zinc-600"
+                        : "border-zinc-200 bg-white text-zinc-400"
                     )}>
                       {step > s.id ? <Check className="h-4 w-4 stroke-[3px]" /> : <span className="text-xs font-black">{s.id}</span>}
                     </div>
                     <div>
-                      <h3 className={cn("text-sm font-bold tracking-wider transition-colors duration-500", step >= s.id ? "text-white uppercase" : "text-zinc-600 uppercase")}>
+                      <h3 className={cn("text-sm font-bold tracking-wider transition-colors duration-500", step >= s.id ? "text-zinc-900 uppercase" : "text-zinc-400 uppercase")}>
                         {s.title}
                       </h3>
                       <p className="text-[11px] text-zinc-500 hidden lg:block font-medium mt-0.5">{s.desc}</p>
@@ -317,13 +317,13 @@ export default function OnboardingPage() {
             </div>
           </div>
 
-          <div className="mt-12 p-6 rounded-[1.5rem] bg-white/[0.02] border border-white/5 backdrop-blur-md relative overflow-hidden group">
+          <div className="mt-12 p-6 rounded-[1.5rem] bg-white border border-zinc-200 backdrop-blur-md relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="flex items-center gap-3 mb-3">
               <Sparkles className="h-4 w-4 text-accent animate-pulse" />
               <span className="text-[10px] font-black text-accent uppercase tracking-[0.2em]">Neural Engine</span>
             </div>
-            <p className="text-[11px] leading-relaxed text-zinc-400 font-medium italic">
+            <p className="text-[11px] leading-relaxed text-zinc-500 font-medium italic">
               "Input gathered. Optimizing learning algorithms based on your university profile..."
             </p>
           </div>
@@ -335,36 +335,36 @@ export default function OnboardingPage() {
             {step === 1 && (
               <motion.div key="step1" {...stepVariants} className="flex-1">
                 <div className="mb-10">
-                  <h2 className="text-4xl font-bold font-heading mb-3 text-white tracking-tight">Identity</h2>
+                  <h2 className="text-4xl font-bold font-heading mb-3 text-zinc-900 tracking-tight">Identity</h2>
                   <p className="text-zinc-500 text-sm font-medium">Initialize your academic profile credentials.</p>
                 </div>
 
                 <div className="space-y-8">
                   <div className="space-y-2.5">
-                    <Label className="text-zinc-500 text-[10px] font-black uppercase tracking-[0.15em] ml-1">Full Name</Label>
+                    <Label className="text-zinc-500 text-xs font-black uppercase tracking-[0.15em] ml-1">Full Name</Label>
                     <Input
                       placeholder="e.g. Alex Johnson"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="h-14 bg-white/[0.03] border-white/10 rounded-2xl focus:ring-primary focus:border-primary text-white placeholder:text-zinc-700 text-base px-6 font-medium transition-all"
+                      className="h-12 bg-white border-zinc-200 rounded-2xl focus:ring-primary focus:border-primary text-zinc-900 placeholder:text-zinc-400 text-base px-4 font-medium transition-all"
                     />
                   </div>
                   <div className="space-y-2.5">
-                    <Label className="text-zinc-500 text-[10px] font-black uppercase tracking-[0.15em] ml-1">Institution</Label>
+                    <Label className="text-zinc-500 text-xs font-black uppercase tracking-[0.15em] ml-1">Institution</Label>
                     <Input
                       placeholder="e.g. Stanford University"
                       value={formData.college}
                       onChange={(e) => setFormData({ ...formData, college: e.target.value })}
-                      className="h-14 bg-white/[0.03] border-white/10 rounded-2xl focus:ring-primary focus:border-primary text-white placeholder:text-zinc-700 text-base px-6 font-medium transition-all"
+                      className="h-12 bg-white border-zinc-200 rounded-2xl focus:ring-primary focus:border-primary text-zinc-900 placeholder:text-zinc-400 text-base px-4 font-medium transition-all"
                     />
                   </div>
                   <div className="space-y-2.5">
-                    <Label className="text-zinc-500 text-[10px] font-black uppercase tracking-[0.15em] ml-1">Major / Degree</Label>
+                    <Label className="text-zinc-500 text-xs font-black uppercase tracking-[0.15em] ml-1">Major / Degree</Label>
                     <Input
                       placeholder="e.g. Computer Science"
                       value={formData.degree}
                       onChange={(e) => setFormData({ ...formData, degree: e.target.value })}
-                      className="h-14 bg-white/[0.03] border-white/10 rounded-2xl focus:ring-primary focus:border-primary text-white placeholder:text-zinc-700 text-base px-6 font-medium transition-all"
+                      className="h-12 bg-white border-zinc-200 rounded-2xl focus:ring-primary focus:border-primary text-zinc-900 placeholder:text-zinc-400 text-base px-4 font-medium transition-all"
                     />
                   </div>
                 </div>
@@ -374,7 +374,7 @@ export default function OnboardingPage() {
             {step === 2 && (
               <motion.div key="step2" {...stepVariants} className="flex-1">
                 <div className="mb-8">
-                  <h2 className="text-4xl font-bold font-heading mb-3 text-white tracking-tight">Academics</h2>
+                  <h2 className="text-4xl font-bold font-heading mb-3 text-zinc-900 tracking-tight">Academics</h2>
                   <p className="text-zinc-500 text-sm font-medium">Select your current focus areas.</p>
                 </div>
 
@@ -385,7 +385,7 @@ export default function OnboardingPage() {
                       <Sparkles className="absolute inset-0 m-auto h-7 w-7 text-primary animate-pulse" />
                     </div>
                     <div className="text-center">
-                      <p className="text-white font-bold tracking-wide">Syncing with AI...</p>
+                      <p className="text-zinc-900 font-bold tracking-wide">Syncing with AI...</p>
                       <p className="text-zinc-500 text-[11px] uppercase tracking-widest mt-1">Generating coursework suggestions</p>
                     </div>
                   </div>
@@ -402,14 +402,14 @@ export default function OnboardingPage() {
                               "group relative flex items-center justify-between p-4 rounded-2xl border transition-all duration-400 overflow-hidden",
                               isSelected
                                 ? "bg-primary/10 border-primary shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)]"
-                                : "bg-white/[0.02] border-white/5 hover:border-white/20"
+                                : "bg-white border-zinc-200 hover:border-primary/50"
                             )}
                           >
                             <MarqueeText
                               text={sub}
                               className={cn(
                                 "text-xs font-bold tracking-wide pr-4 w-full text-left transition-colors",
-                                isSelected ? "text-white" : "text-zinc-400 group-hover:text-zinc-200"
+                                isSelected ? "text-primary" : "text-zinc-500 group-hover:text-zinc-900"
                               )}
                             />
                             {isSelected && (
@@ -422,14 +422,14 @@ export default function OnboardingPage() {
                       })}
                     </div>
 
-                    <div className="relative pt-6 border-t border-white/5">
+                    <div className="relative pt-6 border-t border-zinc-200">
                       <div className="flex gap-3">
                         <Input
                           placeholder="Add custom subject..."
                           value={customSubject}
                           onChange={(e) => setCustomSubject(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && addCustomSubject()}
-                          className="h-12 bg-white/[0.02] border-white/5 rounded-xl focus:border-primary text-xs font-medium"
+                          className="h-12 bg-white border-zinc-200 rounded-xl focus:border-primary text-xs font-medium"
                         />
                         <Button
                           onClick={addCustomSubject}
@@ -447,7 +447,7 @@ export default function OnboardingPage() {
             {step === 3 && (
               <motion.div key="step3" {...stepVariants} className="flex-1">
                 <div className="mb-8">
-                  <h2 className="text-4xl font-bold font-heading mb-3 text-white tracking-tight">Growth</h2>
+                  <h2 className="text-4xl font-bold font-heading mb-3 text-zinc-900 tracking-tight">Growth</h2>
                   <p className="text-zinc-500 text-sm font-medium">Select your external skill goals.</p>
                 </div>
 
@@ -463,14 +463,14 @@ export default function OnboardingPage() {
                             "group relative flex items-center justify-between p-4 rounded-2xl border transition-all duration-400 overflow-hidden",
                             isSelected
                               ? "bg-accent/10 border-accent shadow-[0_0_20px_rgba(var(--accent-rgb),0.2)]"
-                              : "bg-white/[0.02] border-white/5 hover:border-white/20"
+                              : "bg-white border-zinc-200 hover:border-accent/50"
                           )}
                         >
                           <MarqueeText
                             text={int}
                             className={cn(
                               "text-xs font-bold tracking-wide pr-4 w-full text-left transition-colors",
-                              isSelected ? "text-accent" : "text-zinc-400 group-hover:text-zinc-200"
+                              isSelected ? "text-accent" : "text-zinc-500 group-hover:text-zinc-900"
                             )}
                           />
                           {isSelected && (
@@ -483,14 +483,14 @@ export default function OnboardingPage() {
                     })}
                   </div>
 
-                  <div className="relative pt-6 border-t border-white/5">
+                  <div className="relative pt-6 border-t border-zinc-200">
                     <div className="flex gap-3">
                       <Input
                         placeholder="Add secondary skill..."
                         value={customInterest}
                         onChange={(e) => setCustomInterest(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && addCustomInterest()}
-                        className="h-12 bg-white/[0.02] border-white/5 rounded-xl focus:border-accent text-xs font-medium"
+                        className="h-12 bg-white border-zinc-200 rounded-xl focus:border-accent text-xs font-medium"
                       />
                       <Button
                         onClick={addCustomInterest}
@@ -511,7 +511,7 @@ export default function OnboardingPage() {
               variant="ghost"
               onClick={handleBack}
               disabled={step === 1 || isLoading}
-              className="px-8 h-12 rounded-xl hover:bg-white/[0.03] text-zinc-500 hover:text-white transition-all disabled:opacity-0"
+              className="px-8 h-12 rounded-xl hover:bg-zinc-100 text-zinc-500 hover:text-zinc-900 transition-all disabled:opacity-0"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Previous

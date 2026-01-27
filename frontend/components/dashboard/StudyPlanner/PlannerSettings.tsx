@@ -48,12 +48,12 @@ export function PlannerSettings({ isOpen, onClose, onGenerate, isLoading }: Plan
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-white/20 backdrop-blur-sm p-4">
             <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl"
+                className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl max-h-[90vh] z-100"
             >
                 <div className="mb-6 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -70,7 +70,7 @@ export function PlannerSettings({ isOpen, onClose, onGenerate, isLoading }: Plan
                     </button>
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-4">
                     {/* Study Hours Slider */}
                     <div className="space-y-3">
                         <div className="flex justify-between">
@@ -144,11 +144,10 @@ export function PlannerSettings({ isOpen, onClose, onGenerate, isLoading }: Plan
                             onChange={(e) => setData({ ...data, constraints: e.target.value })}
                             className="resize-none bg-muted border-border text-foreground focus:border-primary h-24"
                         />
-                        <p className="text-[11px] text-muted-foreground">Our AI planner naturally understands your schedule requests.</p>
                     </div>
                 </div>
 
-                <div className="mt-8">
+                <div className="mt-4">
                     <Button
                         onClick={handleGenerate}
                         disabled={isLoading || isSubmitting}

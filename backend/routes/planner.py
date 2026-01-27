@@ -46,16 +46,25 @@ User Profile:
 - Subjects: {', '.join(subjects)}
 - Study Goal: {settings.available_hours} hours
 - Time Window: {settings.start_time} to {settings.end_time}
-- Constraints: {settings.constraints}
+- Constraints: {settings.constraints} (STRICTLY FOLLOW)
 
 Requirements:
 1. Create time slots within the specified window
 2. Include mandatory breaks:
-   - Lunch: 1:00 PM - 2:00 PM
-   - Dinner: 9:00 PM - 10:00 PM
+   - Lunch: 1:00 PM - 2:00 PM (type: "break")
+   - Dinner: 9:00 PM - 10:00 PM (type: "break")
 3. Distribute subjects evenly
 4. Include short breaks between study sessions
 5. Respect user constraints
+6. If the user constraints conflict with standard times, prioritization CONSTRAINTS.
+
+IMPORTANT OUTPUT FORMAT:
+For every slot, you MUST include:
+- "time": "HH:MM-HH:MM"
+- "task": "Description"
+- "type": "study" OR "break" OR "other"
+- "duration": duration in minutes (integer)
+- "subject": "Subject Name" (if study) or null
 
 Generate a realistic, achievable schedule."""
 
@@ -67,15 +76,26 @@ User Profile:
 - Subjects: {', '.join(subjects)}
 - Daily Goal: {settings.available_hours} hours/day
 - Time Window: {settings.start_time} to {settings.end_time}
-- Constraints: {settings.constraints}
+- Constraints: {settings.constraints} (STRICTLY FOLLOW)
 
 Requirements:
 1. Generate schedule for 7 consecutive days
 2. Use 2-3 hour study blocks per session
 3. Rotate subjects across the week
 4. Include breaks and rest periods
-5. Account for mandatory meal times
+5. Account for mandatory meal times:
+   - Lunch: 1:00 PM - 2:00 PM (type: "break")
+   - Dinner: 9:00 PM - 10:00 PM (type: "break")
 6. Keep it balanced and sustainable
+7. STRICTLY Respect user constraints
+
+IMPORTANT OUTPUT FORMAT:
+For every slot, you MUST include:
+- "time": "HH:MM-HH:MM"
+- "task": "Description"
+- "type": "study" OR "break" OR "other"
+- "duration": duration in minutes (integer)
+- "subject": "Subject Name" (if study) or null
 
 Generate a realistic weekly schedule."""
 
@@ -184,6 +204,15 @@ def create_fallback_schedule(settings: PlannerSettings, subjects: List[str]) -> 
             "type": "study",
             "subject": subjects[(i+2) % len(subjects)],
             "duration": 120
+        })
+
+        # Dinner break (Added)
+        slots.append({
+            "time": "21:00-22:00",
+            "task": "Dinner Break",
+            "type": "break",
+            "subject": None,
+            "duration": 60
         })
         
         schedule.append({

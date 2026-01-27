@@ -87,28 +87,24 @@ export default function InsightsPage() {
                         label="Study Hours Today"
                         value={stats.study_hours}
                         icon={<Clock className="h-5 w-5 text-primary" />}
-                        trend={{ value: 12, positive: true }}
                         delay={0}
                     />
                     <StatCard
                         label="Syllabus Complete"
                         value={`${stats.syllabus_completion}%`}
                         icon={<BookOpen className="h-5 w-5 text-primary" />}
-                        trend={{ value: 5, positive: true }}
                         delay={0.1}
                     />
                     <StatCard
                         label="Exam Readiness"
                         value={`${stats.exam_readiness}%`}
                         icon={<Target className="h-5 w-5 text-primary" />}
-                        trend={{ value: 8, positive: true }}
                         delay={0.2}
                     />
                     <StatCard
                         label="Accuracy Rate"
                         value={`${stats.accuracy_rate}%`}
                         icon={<Brain className="h-5 w-5 text-primary" />}
-                        trend={{ value: 3, positive: true }}
                         delay={0.3}
                     />
                 </div>

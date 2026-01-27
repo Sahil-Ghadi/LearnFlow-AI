@@ -34,10 +34,19 @@ async def get_sidehustle_dashboard(uid: str):
         
         # Get activity alerts
         alerts_ref = user_ref.collection("activity_alerts").order_by("created_at", direction=firestore.Query.DESCENDING).limit(5)
-        all_alerts = [doc.to_dict() for doc in alerts_ref.stream()]
+        all_alerts = []
+        for doc in alerts_ref.stream():
+            alert_data = doc.to_dict()
+            alert_data['id'] = doc.id
+            all_alerts.append(alert_data)
         
         # Calculate stats
-        skills_in_progress = len([s for s in all_skills if s.get('status') == 'in_progress'])
+        if all_skills:
+            skills_in_progress = len([s for s in all_skills if s.get('status') == 'in_progress'])
+        elif profile_data.get('side_hustle_interests'):
+            skills_in_progress = len(profile_data.get('side_hustle_interests', []))
+        else:
+            skills_in_progress = 0
         projects_completed = len([p for p in all_projects if p.get('status') == 'completed'])
         
         # Calculate weekly practice hours
@@ -54,17 +63,78 @@ async def get_sidehustle_dashboard(uid: str):
         skill_progress = []
         icon_map = {
             'web': 'Code',
+            'mobile': 'Code',
+            'app': 'Code',
+            'code': 'Code',
+            'coding': 'Code',
             'dsa': 'FolderKanban',
-            'ai': 'Zap',
-            'design': 'Rocket'
+            'data': 'FolderKanban',
+            'design': 'Zap',
+            'ui': 'Zap',
+            'ux': 'Zap',
+            'creative': 'Zap',
+            'ai': 'Rocket',
+            'ml': 'Rocket',
+            'machine': 'Rocket',
+            'artificial': 'Rocket',
+            'intelligence': 'Rocket'
         }
+
+        def get_icon(name):
+            name_lower = name.lower()
+            for key, icon in icon_map.items():
+                if key in name_lower:
+                    return icon
+            return 'Code' # Default
         
-        for skill in all_skills[:4]:  # Top 4 skills
-            skill_progress.append({
-                'name': skill.get('name', 'Skill'),
-                'progress': int(skill.get('mastery', 0)),
-                'icon': icon_map.get(skill.get('category', 'web'), 'Code')
-            })
+        if all_skills:
+            for skill in all_skills:
+                # Try to get roadmap for detailed progress even if skill doc exists
+                progress = int(skill.get('mastery', 0))
+                try:
+                    roadmap_doc = user_ref.collection("roadmaps").document(skill.get('name', '').lower()).get()
+                    if roadmap_doc.exists:
+                        r_data = roadmap_doc.to_dict()
+                        total = 0
+                        completed = 0
+                        for phase in r_data.get('phases', []):
+                            items = phase.get('items', [])
+                            total += len(items)
+                            completed += sum(1 for i in items if i.get('completed'))
+                        if total > 0:
+                            progress = int((completed / total) * 100)
+                except:
+                    pass
+
+                skill_progress.append({
+                    'name': skill.get('name', 'Skill'),
+                    'progress': progress,
+                    'icon': get_icon(skill.get('name', ''))
+                })
+        elif profile_data.get('side_hustle_interests'):
+            # Use profile interests if no detailed skills exist yet
+            for interest in profile_data.get('side_hustle_interests', []):
+                progress = 0
+                try:
+                    roadmap_doc = user_ref.collection("roadmaps").document(interest.lower()).get()
+                    if roadmap_doc.exists:
+                        r_data = roadmap_doc.to_dict()
+                        total = 0
+                        completed = 0
+                        for phase in r_data.get('phases', []):
+                            items = phase.get('items', [])
+                            total += len(items)
+                            completed += sum(1 for i in items if i.get('completed'))
+                        if total > 0:
+                            progress = int((completed / total) * 100)
+                except:
+                    pass
+
+                skill_progress.append({
+                    'name': interest,
+                    'progress': progress,
+                    'icon': get_icon(interest)
+                })
         
         # Format learning sources
         learning_sources = []
@@ -83,6 +153,7 @@ async def get_sidehustle_dashboard(uid: str):
             assigned_projects.append({
                 'id': project.get('id', ''),
                 'title': project.get('title', ''),
+                'description': project.get('description', ''),
                 'difficulty': project.get('difficulty', 'Beginner'),
                 'estimatedTime': project.get('estimated_time', '8 hours'),
                 'skills': project.get('skills', [])
@@ -99,6 +170,21 @@ async def get_sidehustle_dashboard(uid: str):
                 'time': format_time_ago(alert.get('created_at'))
             })
         
+        # Calculate daily activity for heatmap (last 365 days)
+        year_ago = datetime.now() - timedelta(days=365)
+        activity_ref = user_ref.collection("activity_alerts").where("created_at", ">=", year_ago.isoformat()).stream()
+        
+        date_counts = {}
+        for doc in activity_ref:
+            data = doc.to_dict()
+            date_str = data.get('created_at', '')[:10] # YYYY-MM-DD
+            if date_str:
+                date_counts[date_str] = date_counts.get(date_str, 0) + 1
+        
+        daily_activity = []
+        for date, count in date_counts.items():
+            daily_activity.append({"date": date, "count": count})
+            
         return {
             "stats": {
                 "skills_in_progress": skills_in_progress,
@@ -107,18 +193,11 @@ async def get_sidehustle_dashboard(uid: str):
                 "portfolio_ready": f"{portfolio_ready}%",
                 "portfolio_ready_value": portfolio_ready
             },
-            "skill_progress": skill_progress if skill_progress else [
-                {"name": "Web Development", "progress": 60, "icon": "Code"}
-            ],
-            "learning_sources": learning_sources if learning_sources else [
-                {"id": 1, "source": "YouTube: React Full Course", "skill": "Web Development", "type": "video", "status": "In Progress"}
-            ],
-            "assigned_projects": assigned_projects if assigned_projects else [
-                {"id": 1, "title": "Build a Portfolio Website", "difficulty": "Beginner", "estimatedTime": "8 hours", "skills": ["HTML", "CSS", "React"]}
-            ],
-            "activity_alerts": activity_alerts if activity_alerts else [
-                {"id": 1, "type": "info", "message": "Start practicing to see activity alerts here!", "time": "Just now"}
-            ]
+            "skill_progress": skill_progress,
+            "learning_sources": learning_sources,
+            "assigned_projects": assigned_projects,
+            "activity_alerts": activity_alerts,
+            "daily_activity": daily_activity
         }
     
     except Exception as e:

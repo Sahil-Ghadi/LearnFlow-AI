@@ -9,12 +9,18 @@ import {
   BookMarked,
   Zap,
   FolderKanban,
-  AlertCircle
+  AlertCircle,
+  Check,
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
 import { GlowCard, StatCard, ProgressBar, AgentBadge } from '@/components/ui/GlowCard';
-import { StudyReminders } from '@/components/StudyReminders';
-import { UpcomingDeadlines } from '@/components/UpcomingDeadlines';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { StreakHeatmap } from '@/components/dashboard/StreakHeatmap';
+
 import { useMode } from '@/contexts/ModeContext';
+import { useRouter } from 'next/navigation';
 
 const iconMap: Record<string, any> = {
   Code,
@@ -35,10 +41,14 @@ const statusColors = {
   'Queued': 'bg-muted text-muted-foreground',
 };
 
+import { ProjectSubmissionModal } from '@/components/dashboard/SideHustle/ProjectSubmissionModal';
+
 export function SideHustleDashboard() {
   const { user } = useMode();
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedProject, setSelectedProject] = useState<any | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -63,6 +73,49 @@ export function SideHustleDashboard() {
       fetchDashboardData();
     }
   }, [user]);
+
+  const handleSubmissionSuccess = (result: any) => {
+    if (!selectedProject) return;
+
+    // Remove from assigned list
+    setDashboardData((prev: any) => ({
+      ...prev,
+      assigned_projects: prev.assigned_projects.filter((p: any) => p.id !== selectedProject.id),
+      stats: {
+        ...prev.stats,
+        projects_completed: (prev.stats?.projects_completed || 0) + 1,
+        xp: (prev.stats?.xp || 0) + result.xp_awarded
+      }
+    }));
+
+    setSelectedProject(null);
+  };
+
+  const handleGenerateProject = async () => {
+    if (!user) return;
+    const toastId = toast.loading("Analyzing your skills and generating a project...");
+    try {
+      const res = await fetch('http://localhost:8000/projects/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: user.uid })
+      });
+
+      if (!res.ok) throw new Error("Failed to generate project");
+
+      const data = await res.json();
+
+      setDashboardData((prev: any) => ({
+        ...prev,
+        assigned_projects: [data.project, ...(prev.assigned_projects || [])]
+      }));
+
+      toast.success("New project assigned!", { id: toastId });
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to generate project", { id: toastId });
+    }
+  };
 
   if (loading) {
     return (
@@ -99,21 +152,18 @@ export function SideHustleDashboard() {
           label="Projects Completed"
           value={stats.projects_completed?.toString() || "0"}
           icon={<FolderKanban className="h-5 w-5 text-primary" />}
-          trend={{ value: 2, positive: true }}
           delay={0.1}
         />
         <StatCard
           label="Weekly Practice"
           value={stats.weekly_practice || "0h"}
           icon={<Code className="h-5 w-5 text-primary" />}
-          trend={{ value: 15, positive: true }}
           delay={0.2}
         />
         <StatCard
           label="Portfolio Ready"
           value={stats.portfolio_ready || "0%"}
           icon={<Rocket className="h-5 w-5 text-primary" />}
-          trend={{ value: 10, positive: true }}
           delay={0.3}
         />
       </div>
@@ -135,7 +185,8 @@ export function SideHustleDashboard() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 + index * 0.1 }}
-                  className="rounded-xl border border-border bg-mode-surface-elevated p-4"
+                  onClick={() => router.push(`/dashboard/skills/${encodeURIComponent(skill.name)}`)}
+                  className="rounded-xl border border-border bg-mode-surface-elevated p-4 cursor-pointer hover:border-primary/50 hover:shadow-lg transition-all"
                 >
                   <div className="mb-4 flex items-center gap-3">
                     <div className="icon-container">
@@ -150,37 +201,8 @@ export function SideHustleDashboard() {
           </div>
         </GlowCard>
 
-        {/* Learning Sources */}
-        <GlowCard delay={0.3}>
-          <div className="mb-4 flex items-center gap-2">
-            <BookMarked className="h-5 w-5 text-primary" />
-            <h2 className="font-heading text-xl font-bold">Learning Sources</h2>
-          </div>
-          <div className="space-y-3">
-            {learningSources.map((source: any, index: number) => (
-              <motion.div
-                key={source.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 + index * 0.1 }}
-                className="rounded-lg border border-border p-3"
-              >
-                <div className="mb-2 flex items-start gap-2">
-                  {source.type === 'video' && <Youtube className="mt-0.5 h-4 w-4 text-destructive" />}
-                  {source.type === 'course' && <BookMarked className="mt-0.5 h-4 w-4 text-primary" />}
-                  {source.type === 'practice' && <Code className="mt-0.5 h-4 w-4 text-accent" />}
-                  <p className="text-sm font-medium">{source.source}</p>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">→ {source.skill}</span>
-                  <span className={`rounded-full px-2 py-0.5 text-xs ${statusColors[source.status as keyof typeof statusColors] || 'bg-muted text-muted-foreground'}`}>
-                    {source.status}
-                  </span>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </GlowCard>
+
+        <StreakHeatmap data={dashboardData?.daily_activity || []} />
       </div>
 
       {/* Projects & Activity */}
@@ -189,33 +211,51 @@ export function SideHustleDashboard() {
         <GlowCard delay={0.4}>
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-heading text-xl font-bold">Auto-Assigned Projects</h2>
-            <AgentBadge>Assigned by AI Agent</AgentBadge>
+            <div className="flex items-center gap-2">
+              <AgentBadge>Assigned by AI Agent</AgentBadge>
+            </div>
+
           </div>
           <div className="space-y-4">
-            {assignedProjects.map((project: any, index: number) => (
-              <motion.div
-                key={project.id}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.5 + index * 0.1 }}
-                className="rounded-xl border border-border bg-mode-surface-elevated p-4"
-              >
-                <div className="mb-3 flex items-start justify-between">
-                  <h3 className="font-medium">{project.title}</h3>
-                  <span className={`rounded-full px-2 py-0.5 text-xs ${difficultyColors[project.difficulty as keyof typeof difficultyColors] || 'bg-muted text-muted-foreground'}`}>
-                    {project.difficulty}
-                  </span>
-                </div>
-                <p className="mb-3 text-sm text-muted-foreground">Est. {project.estimatedTime}</p>
-                <div className="flex flex-wrap gap-1">
-                  {project.skills?.map((skill: string) => (
-                    <span key={skill} className="rounded-md bg-muted px-2 py-0.5 text-xs">
-                      {skill}
+            {assignedProjects.length === 0 ? (
+              <div className="flex flex-col items-center justify-center p-6 text-center border border-dashed border-zinc-800 rounded-lg">
+                <p className="text-zinc-500 text-sm mb-3">No active projects.</p>
+                <p className="text-xs text-zinc-600">Complete roadmap phases to unlock new projects.</p>
+              </div>
+            ) : (
+              assignedProjects.map((project: any, index: number) => (
+                <motion.div
+                  key={project.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.5 + index * 0.1 }}
+                  onClick={() => user && setSelectedProject({ ...project, uid: user.uid })}
+                  className="rounded-xl border border-border bg-mode-surface-elevated p-4 group relative overflow-hidden cursor-pointer hover:border-primary/50 hover:shadow-lg transition-all"
+                >
+                  <div className="mb-3 flex items-start justify-between">
+                    <h3 className="font-medium pr-8">{project.title}</h3>
+                    <span className={`rounded-full px-2 py-0.5 text-xs ${difficultyColors[project.difficulty as keyof typeof difficultyColors] || 'bg-muted text-muted-foreground'}`}>
+                      {project.difficulty}
                     </span>
-                  ))}
-                </div>
-              </motion.div>
-            ))}
+                  </div>
+                  <p className="mb-3 text-sm text-muted-foreground">{project.description}</p>
+
+                  <div className="flex items-center justify-between mt-4">
+                    <p className="text-xs text-zinc-500">Est. {project.estimatedTime}</p>
+                    <div className="flex items-center text-primary text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                      View Details <Rocket className="ml-1 h-3 w-3" />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1 mt-3 pt-3 border-t border-zinc-800/50">
+                    {project.skills?.map((skill: string) => (
+                      <span key={skill} className="rounded-md bg-zinc-800/50 px-2 py-0.5 text-[10px] text-zinc-400">
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </motion.div>
+              )))}
           </div>
         </GlowCard>
 
@@ -251,13 +291,16 @@ export function SideHustleDashboard() {
             ))}
           </div>
         </GlowCard>
-      </div>
+      </div >
 
-      {/* Reminders & Deadlines Row */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <StudyReminders />
-        <UpcomingDeadlines />
-      </div>
-    </motion.div>
+
+
+      <ProjectSubmissionModal
+        isOpen={!!selectedProject}
+        onClose={() => setSelectedProject(null)}
+        project={selectedProject}
+        onSuccess={handleSubmissionSuccess}
+      />
+    </motion.div >
   );
 }

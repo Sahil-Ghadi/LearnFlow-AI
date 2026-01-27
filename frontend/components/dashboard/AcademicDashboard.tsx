@@ -87,7 +87,7 @@ export function AcademicDashboard() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Advanced AI Study Planner */}
         <div className="lg:col-span-2">
-          <GlowCard className="h-full min-h-[500px] relative overflow-hidden flex flex-col">
+          <GlowCard className="h-[650px] relative overflow-hidden flex flex-col">
             <div className="absolute top-0 right-0 p-4 z-10">
               <Button
                 onClick={() => setIsSettingsOpen(true)}
@@ -112,7 +112,7 @@ export function AcademicDashboard() {
               </div>
             </div>
 
-            <div className="flex-1">
+            <div className="flex-1 min-h-0">
               <PlannerCalendar scheduleData={scheduleData} viewMode={plannerView} />
             </div>
           </GlowCard>

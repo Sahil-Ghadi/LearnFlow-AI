@@ -213,7 +213,7 @@ export function UpcomingDeadlines({ onRefreshStats }: { onRefreshStats?: () => v
                         <Calendar className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                        <h3 className="font-heading font-bold">Upcoming Deadlines / Exams</h3>
+                        <h3 className="font-heading font-bold">{mode === 'academic' ? 'Upcoming Deadlines / Exams' : 'Upcoming Project Deadlines'}</h3>
                         <p className="text-xs text-muted-foreground">
                             {activeDeadlines.length} {mode === 'academic' ? 'academic' : 'project'} deadlines
                         </p>

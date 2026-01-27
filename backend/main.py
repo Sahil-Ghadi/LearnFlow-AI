@@ -16,6 +16,8 @@ from routes.timeline import router as timeline_router
 from routes.analytics import router as analytics_router
 from routes.dashboard import router as dashboard_router
 from routes.chat import router as chat_router
+from routes.roadmap import router as roadmap_router
+from routes.projects import router as projects_router
 
 # Load environment variables
 load_dotenv()
@@ -49,6 +51,8 @@ app.include_router(timeline_router)
 app.include_router(analytics_router)
 app.include_router(dashboard_router)
 app.include_router(chat_router)
+app.include_router(roadmap_router)
+app.include_router(projects_router)
 
 @app.get("/")
 def read_root():
