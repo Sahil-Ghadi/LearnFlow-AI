@@ -140,33 +140,7 @@ export function SideHustleDashboard() {
       transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
       className="space-y-8"
     >
-      {/* Stats Row */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Skills in Progress"
-          value={stats.skills_in_progress?.toString() || "0"}
-          icon={<Zap className="h-5 w-5 text-primary" />}
-          delay={0}
-        />
-        <StatCard
-          label="Projects Completed"
-          value={stats.projects_completed?.toString() || "0"}
-          icon={<FolderKanban className="h-5 w-5 text-primary" />}
-          delay={0.1}
-        />
-        <StatCard
-          label="Weekly Practice"
-          value={stats.weekly_practice || "0h"}
-          icon={<Code className="h-5 w-5 text-primary" />}
-          delay={0.2}
-        />
-        <StatCard
-          label="Portfolio Ready"
-          value={stats.portfolio_ready || "0%"}
-          icon={<Rocket className="h-5 w-5 text-primary" />}
-          delay={0.3}
-        />
-      </div>
+
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

@@ -11,7 +11,8 @@ import {
   Bot,
   GraduationCap,
   Rocket,
-  Brain
+  Brain,
+  User
 } from 'lucide-react';
 import { useMode } from '@/contexts/ModeContext';
 import { cn } from '@/lib/utils';
@@ -20,8 +21,8 @@ const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/insights', label: 'Insights', icon: Brain },
   { path: '/timeline', label: 'Agent Timeline', icon: Activity },
-  { path: '/analytics', label: 'Analytics', icon: BarChart3 },
-  { path: '/settings', label: 'Settings', icon: Settings },
+
+  { path: '/settings', label: 'Profile', icon: User },
 ];
 
 export function Sidebar() {

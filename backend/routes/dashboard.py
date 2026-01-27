@@ -197,7 +197,8 @@ async def get_sidehustle_dashboard(uid: str):
             "learning_sources": learning_sources,
             "assigned_projects": assigned_projects,
             "activity_alerts": activity_alerts,
-            "daily_activity": daily_activity
+            "daily_activity": daily_activity,
+            "monthly_project_stats": get_monthly_project_stats(all_projects)
         }
     
     except Exception as e:
@@ -258,6 +259,53 @@ async def get_reminders(uid: str):
     except Exception as e:
         print(f"Reminders Error: {str(e)}")
         return {"reminders": []}
+
+
+def get_monthly_project_stats(all_projects: List[Dict]) -> List[Dict]:
+    """
+    Calculate monthly project completions for the last 6 months.
+    Returns list of {name: 'Month', value: count}
+    """
+    # Initialize last 6 months with 0
+    today = datetime.now()
+    stats = {}
+    for i in range(5, -1, -1):
+        d = today - timedelta(days=i*30) # Approx month
+        month_name = d.strftime("%b")
+        stats[month_name] = 0
+        
+    # Count completed projects
+    for project in all_projects:
+        if project.get('status') == 'completed' and project.get('completed_at'):
+            try:
+                # Parse date
+                completed_at = project.get('completed_at')
+                if isinstance(completed_at, str):
+                    dt = datetime.fromisoformat(completed_at.replace('Z', '+00:00'))
+                elif isinstance(completed_at, datetime):
+                    dt = completed_at
+                else:
+                    continue
+                
+                # Check if within last 6 months window (approx)
+                if (today - dt).days < 180:
+                    month_name = dt.strftime("%b")
+                    if month_name in stats:
+                        stats[month_name] += 1
+            except:
+                continue
+
+    # Convert to list ensuring order
+    result = []
+    # Re-generate key order to ensure chronological sort
+    for i in range(5, -1, -1):
+        d = today - timedelta(days=i*30)
+        month_name = d.strftime("%b")
+        # specific check to avoid duplicates if month names overlap in short window (unlikely with 30 days but safer)
+        if not any(x['name'] == month_name for x in result): 
+             result.append({"name": month_name, "value": stats.get(month_name, 0)})
+             
+    return result
 
 
 def format_time_ago(timestamp) -> str:

@@ -12,7 +12,9 @@ import {
   TrendingUp,
   Clock,
   Zap,
-  Code
+  Code,
+  Book,
+  Rocket
 } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { GlowCard, AgentBadge } from '@/components/ui/GlowCard';
@@ -38,7 +40,9 @@ const iconMap: Record<string, any> = {
   Clock,
   Zap,
   Code,
-  Bot
+  Bot,
+  Book,
+  Rocket
 };
 
 const typeColors = {
@@ -47,7 +51,8 @@ const typeColors = {
   adjustment: 'from-purple-500 to-pink-500',
   priority: 'from-green-500 to-emerald-500',
   insight: 'from-indigo-500 to-purple-500',
-  project: 'from-cyan-500 to-blue-500',
+  roadmap: 'from-amber-500 to-orange-500',
+  project: 'from-violet-500 to-purple-500',
 };
 
 export default function Timeline() {

@@ -4,15 +4,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
-  Settings as SettingsIcon,
   Clock,
-  Bell,
-  Globe,
   Sliders,
   Save,
   User,
-  Moon,
-  Sun
+  GraduationCap
 } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { GlowCard } from '@/components/ui/GlowCard';
@@ -25,17 +21,13 @@ import { Switch } from '@/components/ui/switch';
 import { useMode } from '@/contexts/ModeContext';
 import { toast } from 'sonner';
 
-export default function Settings() {
+export default function ProfilePage() {
   const { userProfile, setUserProfile, isOnboarded, isLoading } = useMode();
   const router = useRouter();
   const [settings, setSettings] = useState({
     dailyStudyHours: 4,
     difficultyLevel: 'medium',
     language: 'english',
-    notificationFrequency: 'normal',
-    emailNotifications: true,
-    pushNotifications: true,
-    weeklyReports: true,
     agentAutonomy: true,
     autoScheduling: true,
     breakReminders: true,
@@ -48,89 +40,108 @@ export default function Settings() {
   }, [isOnboarded, isLoading, router]);
 
   const handleSave = () => {
-    toast.success('Settings saved successfully!');
+    toast.success('Profile updated successfully!');
   };
 
   if (isLoading || !isOnboarded) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="animate-pulse text-lg text-muted-foreground">Loading...</div>
+        <div className="animate-pulse text-lg text-muted-foreground">Loading profile...</div>
       </div>
     );
   }
 
   return (
     <DashboardLayout
-      title="Settings"
-      subtitle="Customize your learning experience"
+      title="My Profile"
+      subtitle="Manage your personal information and learning preferences"
     >
-      <div className="mx-auto max-w-4xl space-y-6">
-        {/* Profile Section */}
-        <GlowCard delay={0}>
-          <div className="mb-6 flex items-center gap-3">
-            <div className="icon-container">
-              <User className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h2 className="font-heading text-xl font-bold">Profile Information</h2>
-              <p className="text-sm text-muted-foreground">Update your personal details</p>
-            </div>
-          </div>
+      <div className="mx-auto max-w-5xl space-y-6">
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input id="name" defaultValue={userProfile?.name || ''} />
+        {/* Hero Profile Card */}
+        <GlowCard className="p-0 overflow-hidden border-primary/20">
+          <div className="relative h-32 bg-gradient-to-r from-primary/20 to-secondary/20">
+            <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,transparent,black)]" />
+          </div>
+          <div className="px-8 pb-8">
+            <div className="relative flex justify-between items-end -mt-12 mb-6">
+              <div className="flex items-end gap-6">
+                <div className="h-24 w-24 rounded-2xl border-4 border-background bg-zinc-800 flex items-center justify-center shadow-xl">
+                  <span className="text-3xl font-bold text-primary">
+                    {userProfile?.name?.charAt(0).toUpperCase() || 'U'}
+                  </span>
+                </div>
+                <div className="mb-2">
+                  <h1 className="text-4xl font-bold">{userProfile?.name}</h1>
+                  <div className="flex items-center gap-2 text-muted-foreground text-lg">
+                    <GraduationCap className="h-5 w-5" />
+                    <span>{userProfile?.college} • {userProfile?.course}</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="college">College</Label>
-              <Input id="college" defaultValue={userProfile?.college || ''} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="course">Course</Label>
-              <Input id="course" defaultValue={userProfile?.course || ''} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="your@email.com" />
+
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="name">Full Name</Label>
+                <Input id="name" defaultValue={userProfile?.name || ''} className="bg-muted/50" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <Input id="email" type="email" placeholder="your@email.com" className="bg-muted/50" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="college">College / University</Label>
+                <Input id="college" defaultValue={userProfile?.college || ''} className="bg-muted/50" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="course">Major / Course</Label>
+                <Input id="course" defaultValue={userProfile?.course || ''} className="bg-muted/50" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input id="phone" type="tel" placeholder="+1 (555) 000-0000" className="bg-muted/50" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="website">Personal Website</Label>
+                <Input id="website" type="url" placeholder="https://yourwebsite.com" className="bg-muted/50" />
+              </div>
             </div>
           </div>
         </GlowCard>
 
-        {/* Learning Preferences */}
-        <GlowCard delay={0.1}>
-          <div className="mb-6 flex items-center gap-3">
-            <div className="icon-container">
-              <Sliders className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h2 className="font-heading text-xl font-bold">Learning Preferences</h2>
-              <p className="text-sm text-muted-foreground">Configure your study parameters</p>
-            </div>
-          </div>
+        {/* Settings Grid */}
+        <div className="grid gap-6 md:grid-cols-2">
 
-          <div className="space-y-6">
-            {/* Daily Study Hours */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label>Daily Study Hours</Label>
-                <span className="font-medium">{settings.dailyStudyHours} hours</span>
+          {/* Learning Preferences */}
+          <GlowCard delay={0.1} className="h-full">
+            <div className="mb-6 flex items-center gap-3">
+              <div className="icon-container">
+                <Sliders className="h-5 w-5 text-primary" />
               </div>
-              <Slider
-                value={[settings.dailyStudyHours]}
-                onValueChange={([value]) => setSettings({ ...settings, dailyStudyHours: value })}
-                min={1}
-                max={10}
-                step={0.5}
-                className="w-full"
-              />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>1 hour</span>
-                <span>10 hours</span>
+              <div>
+                <h2 className="font-heading text-lg font-bold">Learning Preferences</h2>
+                <p className="text-xs text-muted-foreground">Configure your study parameters</p>
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-6">
+              {/* Daily Study Hours */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>Daily Study Hours</Label>
+                  <span className="font-medium text-primary">{settings.dailyStudyHours} hours</span>
+                </div>
+                <Slider
+                  value={[settings.dailyStudyHours]}
+                  onValueChange={([value]) => setSettings({ ...settings, dailyStudyHours: value })}
+                  min={1}
+                  max={10}
+                  step={0.5}
+                  className="w-full"
+                />
+              </div>
+
               {/* Difficulty Level */}
               <div className="space-y-2">
                 <Label>Difficulty Level</Label>
@@ -142,16 +153,16 @@ export default function Settings() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="easy">Easy - More time, simpler problems</SelectItem>
-                    <SelectItem value="medium">Medium - Balanced approach</SelectItem>
-                    <SelectItem value="hard">Hard - Intensive, challenging</SelectItem>
+                    <SelectItem value="easy">Easy</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="hard">Hard</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               {/* Language */}
               <div className="space-y-2">
-                <Label>Language</Label>
+                <Label>Preferred Language</Label>
                 <Select
                   value={settings.language}
                   onValueChange={(value) => setSettings({ ...settings, language: value })}
@@ -168,134 +179,66 @@ export default function Settings() {
                 </Select>
               </div>
             </div>
-          </div>
-        </GlowCard>
+          </GlowCard>
 
-        {/* Notification Settings */}
-        <GlowCard delay={0.2}>
-          <div className="mb-6 flex items-center gap-3">
-            <div className="icon-container">
-              <Bell className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h2 className="font-heading text-xl font-bold">Notifications</h2>
-              <p className="text-sm text-muted-foreground">Control when and how you&apos;re notified</p>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            {/* Notification Frequency */}
-            <div className="space-y-2">
-              <Label>Notification Frequency</Label>
-              <Select
-                value={settings.notificationFrequency}
-                onValueChange={(value) => setSettings({ ...settings, notificationFrequency: value })}
-              >
-                <SelectTrigger className="w-full md:w-1/2">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="minimal">Minimal - Only critical</SelectItem>
-                  <SelectItem value="normal">Normal - Important updates</SelectItem>
-                  <SelectItem value="frequent">Frequent - All updates</SelectItem>
-                </SelectContent>
-              </Select>
+          {/* AI Agent Settings */}
+          <GlowCard delay={0.2} className="h-full">
+            <div className="mb-6 flex items-center gap-3">
+              <div className="icon-container">
+                <Clock className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="font-heading text-lg font-bold">AI Agent Behavior</h2>
+                <p className="text-xs text-muted-foreground">Configure orchestrator autonomy</p>
+              </div>
             </div>
 
-            <div className="space-y-4 pt-4">
-              <div className="flex items-center justify-between rounded-lg border border-border p-4">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between rounded-lg border border-border p-3 bg-muted/20">
                 <div>
-                  <p className="font-medium">Email Notifications</p>
-                  <p className="text-sm text-muted-foreground">Receive updates via email</p>
+                  <p className="font-medium text-sm">Full Autonomy</p>
+                  <p className="text-xs text-muted-foreground">Allow AI to make scheduling decisions</p>
                 </div>
                 <Switch
-                  checked={settings.emailNotifications}
-                  onCheckedChange={(checked) => setSettings({ ...settings, emailNotifications: checked })}
+                  checked={settings.agentAutonomy}
+                  onCheckedChange={(checked) => setSettings({ ...settings, agentAutonomy: checked })}
                 />
               </div>
 
-              <div className="flex items-center justify-between rounded-lg border border-border p-4">
+              <div className="flex items-center justify-between rounded-lg border border-border p-3 bg-muted/20">
                 <div>
-                  <p className="font-medium">Push Notifications</p>
-                  <p className="text-sm text-muted-foreground">Browser push notifications</p>
+                  <p className="font-medium text-sm">Auto-Scheduling</p>
+                  <p className="text-xs text-muted-foreground">Create daily plans automatically</p>
                 </div>
                 <Switch
-                  checked={settings.pushNotifications}
-                  onCheckedChange={(checked) => setSettings({ ...settings, pushNotifications: checked })}
+                  checked={settings.autoScheduling}
+                  onCheckedChange={(checked) => setSettings({ ...settings, autoScheduling: checked })}
                 />
               </div>
 
-              <div className="flex items-center justify-between rounded-lg border border-border p-4">
+              <div className="flex items-center justify-between rounded-lg border border-border p-3 bg-muted/20">
                 <div>
-                  <p className="font-medium">Weekly Progress Reports</p>
-                  <p className="text-sm text-muted-foreground">Summary of your learning progress</p>
+                  <p className="font-medium text-sm">Break Reminders</p>
+                  <p className="text-xs text-muted-foreground">Smart notifications for breaks</p>
                 </div>
                 <Switch
-                  checked={settings.weeklyReports}
-                  onCheckedChange={(checked) => setSettings({ ...settings, weeklyReports: checked })}
+                  checked={settings.breakReminders}
+                  onCheckedChange={(checked) => setSettings({ ...settings, breakReminders: checked })}
                 />
               </div>
             </div>
-          </div>
-        </GlowCard>
-
-        {/* AI Agent Settings */}
-        <GlowCard delay={0.3}>
-          <div className="mb-6 flex items-center gap-3">
-            <div className="icon-container">
-              <Clock className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h2 className="font-heading text-xl font-bold">AI Agent Behavior</h2>
-              <p className="text-sm text-muted-foreground">Configure how the AI orchestrator works</p>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between rounded-lg border border-border p-4">
-              <div>
-                <p className="font-medium">Full Autonomy Mode</p>
-                <p className="text-sm text-muted-foreground">Allow AI to make all scheduling decisions</p>
-              </div>
-              <Switch
-                checked={settings.agentAutonomy}
-                onCheckedChange={(checked) => setSettings({ ...settings, agentAutonomy: checked })}
-              />
-            </div>
-
-            <div className="flex items-center justify-between rounded-lg border border-border p-4">
-              <div>
-                <p className="font-medium">Auto-Scheduling</p>
-                <p className="text-sm text-muted-foreground">Automatically create daily study plans</p>
-              </div>
-              <Switch
-                checked={settings.autoScheduling}
-                onCheckedChange={(checked) => setSettings({ ...settings, autoScheduling: checked })}
-              />
-            </div>
-
-            <div className="flex items-center justify-between rounded-lg border border-border p-4">
-              <div>
-                <p className="font-medium">Break Reminders</p>
-                <p className="text-sm text-muted-foreground">Notify when it&apos;s time to take a break</p>
-              </div>
-              <Switch
-                checked={settings.breakReminders}
-                onCheckedChange={(checked) => setSettings({ ...settings, breakReminders: checked })}
-              />
-            </div>
-          </div>
-        </GlowCard>
+          </GlowCard>
+        </div>
 
         {/* Save Button */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="flex justify-end"
+          className="flex justify-end pt-4"
         >
-          <Button onClick={handleSave} size="lg" className="gap-2">
+          <Button onClick={handleSave} size="lg" className="min-w-[150px] gap-2 shadow-lg shadow-primary/25">
             <Save className="h-4 w-4" />
-            Save Settings
+            Save Profile
           </Button>
         </motion.div>
       </div>
