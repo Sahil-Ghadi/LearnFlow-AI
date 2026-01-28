@@ -73,48 +73,77 @@ export function PlannerCalendar({ scheduleData, viewMode }: PlannerCalendarProps
 
             {/* Timeline */}
             <div className="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1">
-                {dayData.slots.map((slot, idx) => (
-                    <motion.div
-                        key={idx}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.05 }}
-                        className="flex gap-4 group"
-                    >
-                        {/* Time Column */}
-                        <div className="w-16 flex-shrink-0 pt-2">
-                            <span className="text-xs font-bold text-muted-foreground">{slot.time.split('-')[0]}</span>
-                        </div>
+                {dayData.slots.map((slot, idx) => {
+                    const isCurrent = (() => {
+                        const now = new Date();
+                        const [start, end] = slot.time.split('-');
+                        const [startH, startM] = start.split(':').map(Number);
+                        const [endH, endM] = end.split(':').map(Number);
 
-                        {/* Card */}
-                        <div className={cn(
-                            "flex-1 rounded-2xl p-4 border transition-all hover:scale-[1.01]",
-                            slot.type === 'study' ? "bg-primary/5 border-primary/20 hover:border-primary/40" :
-                                slot.type === 'break' ? "bg-accent/5 border-accent/20 hover:border-accent/40" :
-                                    "bg-muted/50 border-border hover:border-border/80"
-                        )}>
-                            <div className="flex items-start justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                    {slot.type === 'study' && <BookOpen className="h-4 w-4 text-primary" />}
-                                    {slot.type === 'break' && <Coffee className="h-4 w-4 text-accent" />}
-                                    {slot.type === 'other' && <Clock className="h-4 w-4 text-muted-foreground" />}
-                                    <span className={cn(
-                                        "text-xs font-bold uppercase tracking-wider",
-                                        slot.type === 'study' ? "text-primary" :
-                                            slot.type === 'break' ? "text-accent" : "text-muted-foreground"
-                                    )}>
-                                        {slot.type}
-                                    </span>
-                                </div>
-                                <span className="text-xs font-medium text-muted-foreground">{slot.duration} mins</span>
+                        // Check if today matches the scheduled date
+                        const schedDate = new Date(dayData.date);
+                        const isSameDay = now.toDateString() === schedDate.toDateString();
+
+                        // For logic, we assume the schedule is for "today" relative to the view, 
+                        // but if we want to validly highlight, better ensure it matches calendar date.
+                        if (!isSameDay) return false;
+
+                        const startTime = new Date(now);
+                        startTime.setHours(startH, startM, 0);
+                        const endTime = new Date(now);
+                        endTime.setHours(endH, endM, 0);
+
+                        return now >= startTime && now <= endTime;
+                    })();
+
+                    return (
+                        <motion.div
+                            key={idx}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: idx * 0.05 }}
+                            className="flex gap-4 group"
+                        >
+                            {/* Time Column */}
+                            <div className="w-16 flex-shrink-0 pt-2">
+                                <span className={cn(
+                                    "text-xs font-bold",
+                                    isCurrent ? "text-primary" : "text-muted-foreground"
+                                )}>{slot.time.split('-')[0]}</span>
                             </div>
-                            <h4 className="text-base font-bold text-foreground mb-1">{slot.task}</h4>
-                            {slot.subject && (
-                                <p className="text-sm text-muted-foreground">{slot.subject}</p>
-                            )}
-                        </div>
-                    </motion.div>
-                ))}
+
+                            {/* Card */}
+                            <div className={cn(
+                                "flex-1 rounded-2xl p-4 border transition-all hover:scale-[1.01]",
+                                isCurrent ? "ring-2 ring-primary shadow-[0_0_20px_rgba(var(--primary-rgb),0.3)] bg-primary/10 border-primary" : "",
+                                !isCurrent && slot.type === 'study' ? "bg-primary/5 border-primary/20 hover:border-primary/40" : "",
+                                !isCurrent && slot.type === 'break' ? "bg-accent/5 border-accent/20 hover:border-accent/40" : "",
+                                !isCurrent && slot.type === 'other' ? "bg-muted/50 border-border hover:border-border/80" : ""
+                            )}>
+                                <div className="flex items-start justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                        {slot.type === 'study' && <BookOpen className="h-4 w-4 text-primary" />}
+                                        {slot.type === 'break' && <Coffee className="h-4 w-4 text-accent" />}
+                                        {slot.type === 'other' && <Clock className="h-4 w-4 text-muted-foreground" />}
+                                        <span className={cn(
+                                            "text-xs font-bold uppercase tracking-wider",
+                                            slot.type === 'study' ? "text-primary" :
+                                                slot.type === 'break' ? "text-accent" : "text-muted-foreground"
+                                        )}>
+                                            {slot.type}
+                                            {isCurrent && <span className="ml-2 animate-pulse text-[10px] bg-primary text-white px-1.5 py-0.5 rounded-full">NOW</span>}
+                                        </span>
+                                    </div>
+                                    <span className="text-xs font-medium text-muted-foreground">{slot.duration} mins</span>
+                                </div>
+                                <h4 className="text-base font-bold text-foreground mb-1">{slot.task}</h4>
+                                {slot.subject && (
+                                    <p className="text-sm text-muted-foreground">{slot.subject}</p>
+                                )}
+                            </div>
+                        </motion.div>
+                    );
+                })}
             </div>
         </div>
     );

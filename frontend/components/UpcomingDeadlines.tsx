@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMode } from '@/contexts/ModeContext';
+import { db } from '@/lib/firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { AddExamModal } from '@/components/dashboard/Exams/AddExamModal';
@@ -147,15 +149,69 @@ export function UpcomingDeadlines({ onRefreshStats }: { onRefreshStats?: () => v
         }
     };
 
-    // Poll for updates
+    // Real-time listener using Firestore
     useEffect(() => {
-        if (mode === 'academic') {
-            fetchExams();
-            const interval = setInterval(fetchExams, 2000); // Poll every 2 seconds
-            return () => clearInterval(interval);
-        } else {
-            setDeadlines(sideHustleDeadlines);
+        if (mode !== 'academic' || !user?.uid) {
+            if (mode === 'side-hustle') setDeadlines(sideHustleDeadlines);
+            return;
         }
+
+        const examsRef = collection(db, "user_profiles", user.uid, "exams");
+        const deadlinesRef = collection(db, "user_profiles", user.uid, "deadlines");
+        // Backend filtered: where("completed", "==", False)
+        const activeDeadlinesQuery = query(deadlinesRef, where("completed", "==", false));
+
+        let currentExams: any[] = [];
+        let currentDeadlines: any[] = [];
+
+        // Helper to merge and set state
+        const updateState = () => {
+            const normalizedExams: Deadline[] = currentExams.map((exam: any) => {
+                let parsedDate = new Date(exam.date);
+                if (isNaN(parsedDate.getTime())) parsedDate = new Date();
+
+                return {
+                    id: exam.id,
+                    title: exam.title,
+                    dueDate: parsedDate,
+                    date: exam.date,
+                    category: exam.category || 'exam',
+                    subject: exam.subject,
+                    progress: exam.total_topics > 0 ? Math.round((exam.completed_topics / exam.total_topics) * 100) : (exam.progress || 0),
+                    syllabus: exam.syllabus,
+                    total_topics: exam.total_topics,
+                    completed_topics: exam.completed_topics
+                };
+            });
+
+            const normalizedDeadlines: Deadline[] = currentDeadlines.map((doc: any) => ({
+                id: doc.id,
+                title: doc.title || "Untitled",
+                subject: doc.subject || "General",
+                dueDate: new Date(doc.due_date || Date.now()),
+                date: doc.due_date || "",
+                category: "assignment",
+                progress: 0,
+            }));
+
+            const allItems = [...normalizedExams, ...normalizedDeadlines].sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+            setDeadlines(allItems);
+        };
+
+        const unsubscribeExams = onSnapshot(examsRef, (snapshot) => {
+            currentExams = snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
+            updateState();
+        }, (error) => console.error("Exams listener error:", error));
+
+        const unsubscribeDeadlines = onSnapshot(activeDeadlinesQuery, (snapshot) => {
+            currentDeadlines = snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
+            updateState();
+        }, (error) => console.error("Deadlines listener error:", error));
+
+        return () => {
+            unsubscribeExams();
+            unsubscribeDeadlines();
+        };
     }, [user?.uid, mode]);
 
     const activeDeadlines = deadlines;

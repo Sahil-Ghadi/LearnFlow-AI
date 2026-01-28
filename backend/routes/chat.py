@@ -145,9 +145,27 @@ async def chat_message(request: ChatRequest):
         # Get current date/time for context
         now = datetime.now().isoformat()
         
+        # Fetch user profile to get valid subjects
+        user_ref = db.collection("user_profiles").document(request.uid).get()
+        subjects_list = "General" # Default
+        if user_ref.exists:
+            user_data = user_ref.to_dict()
+            subjects = user_data.get("academic_subjects", [])
+            if subjects:
+                subjects_list = ", ".join(subjects)
+
+        # Dynamic System Prompt with Subjects
+        dynamic_system_prompt = f"""{SYSTEM_PROMPT}
+
+CRITICAL INSTRUCTION:
+The user is enrolled in the following subjects: [{subjects_list}].
+When adding deadlines, tasks, or generating schedules, you MUST ONLY select from these exact subjects.
+Do not invent new subjects. If the user mentions a topic not in this list, try to map it to the closest valid subject or ask for clarification.
+"""
+        
         inputs = {
             "messages": [
-                SystemMessage(content=SYSTEM_PROMPT),
+                SystemMessage(content=dynamic_system_prompt),
                 HumanMessage(content=f"Current Date/Time: {now}\nUser ID: {request.uid}\nUser Name: {request.user_name}\nRequest: {request.message}")
             ]
         }

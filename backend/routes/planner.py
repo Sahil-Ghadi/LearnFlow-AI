@@ -37,65 +37,49 @@ async def generate_plan(settings: PlannerSettings):
         # Create structured output LLM
         structured_llm = llm.with_structured_output(ScheduleResponse)
 
-        # Construct concise prompt based on view mode
+        # Construct optimized prompt
+        common_instructions = f"""
+User Profile:
+- Subjects: {', '.join(subjects)}
+- Study Goal: {settings.available_hours} hours/day
+- Time Window: {settings.start_time} to {settings.end_time}
+- Constraints: {settings.constraints} (STRICTLY FOLLOW)
+
+Requirements:
+1. Create time slots strictly within {settings.start_time} - {settings.end_time}
+2. Distribute subjects evenly
+3. Include short breaks between study sessions
+4. Respect user constraints (Priority #1)
+
+Meal Logic:
+- IF time window covers 13:00, schedule "Lunch Break" (13:00-14:00)
+- IF time window covers 21:00, schedule "Dinner Break" (21:00-22:00)
+- ELSE exclude them.
+
+IMPORTANT OUTPUT FORMAT:
+For every slot, you MUST include:
+- "time": "HH:MM-HH:MM"
+- "task": "Description"
+- "type": "study" OR "break" OR "other"
+- "duration": duration in minutes (integer)
+- "subject": "Subject Name" (if study) or null"""
+
         if settings.view_mode == 'daily':
             today = datetime.now()
             prompt = f"""Create a detailed daily study schedule for {today.strftime('%A, %Y-%m-%d')}.
+{common_instructions}
 
-User Profile:
-- Subjects: {', '.join(subjects)}
-- Study Goal: {settings.available_hours} hours
-- Time Window: {settings.start_time} to {settings.end_time}
-- Constraints: {settings.constraints} (STRICTLY FOLLOW)
-
-Requirements:
-1. Create time slots within the specified window
-2. Include mandatory breaks:
-   - Lunch: 1:00 PM - 2:00 PM (type: "break")
-   - Dinner: 9:00 PM - 10:00 PM (type: "break")
-3. Distribute subjects evenly
-4. Include short breaks between study sessions
-5. Respect user constraints
-6. If the user constraints conflict with standard times, prioritization CONSTRAINTS.
-
-IMPORTANT OUTPUT FORMAT:
-For every slot, you MUST include:
-- "time": "HH:MM-HH:MM"
-- "task": "Description"
-- "type": "study" OR "break" OR "other"
-- "duration": duration in minutes (integer)
-- "subject": "Subject Name" (if study) or null
-
-Generate a realistic, achievable schedule."""
-
-        else:  # Weekly view
+Generate a realistic, achievable daily schedule."""
+        else:
             start_date = datetime.now()
             prompt = f"""Create a 7-day study schedule starting {start_date.strftime('%Y-%m-%d')}.
+{common_instructions}
 
-User Profile:
-- Subjects: {', '.join(subjects)}
-- Daily Goal: {settings.available_hours} hours/day
-- Time Window: {settings.start_time} to {settings.end_time}
-- Constraints: {settings.constraints} (STRICTLY FOLLOW)
-
-Requirements:
-1. Generate schedule for 7 consecutive days
-2. Use 2-3 hour study blocks per session
-3. Rotate subjects across the week
-4. Include breaks and rest periods
-5. Account for mandatory meal times:
-   - Lunch: 1:00 PM - 2:00 PM (type: "break")
-   - Dinner: 9:00 PM - 10:00 PM (type: "break")
-6. Keep it balanced and sustainable
-7. STRICTLY Respect user constraints
-
-IMPORTANT OUTPUT FORMAT:
-For every slot, you MUST include:
-- "time": "HH:MM-HH:MM"
-- "task": "Description"
-- "type": "study" OR "break" OR "other"
-- "duration": duration in minutes (integer)
-- "subject": "Subject Name" (if study) or null
+Additional Weekly Requirements:
+- Generate schedule for 7 consecutive days
+- Use 2-3 hour study blocks per session
+- Rotate subjects across the week
+- Keep it balanced and sustainable
 
 Generate a realistic weekly schedule."""
 

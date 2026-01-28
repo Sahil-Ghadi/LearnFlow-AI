@@ -34,7 +34,7 @@ export function AcademicDashboard() {
         const data = await planRes.json();
         if (data.schedule && data.schedule.length > 0) {
           setScheduleData(data.schedule);
-          if (data.schedule.length > 1) setPlannerView('weekly');
+          // if (data.schedule.length > 1) setPlannerView('weekly');
         }
       }
     } catch (error) {
