@@ -66,40 +66,40 @@ export function YouTubeModal({ isOpen, onClose, topic, subject }: YouTubeModalPr
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        className="absolute inset-0 bg-background/80 backdrop-blur-sm"
                     />
 
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        className="w-full max-w-4xl bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden relative z-10 max-h-[85vh] flex flex-col"
+                        className="w-full max-w-4xl bg-card border border-border rounded-2xl shadow-2xl overflow-hidden relative z-10 max-h-[85vh] flex flex-col"
                     >
                         {/* Header */}
-                        <div className="p-6 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
+                        <div className="p-6 border-b border-border flex justify-between items-center bg-card/50">
                             <div>
-                                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                                    <Youtube className="h-6 w-6 text-red-500" />
+                                <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+                                    <Youtube className="h-6 w-6 text-red-600" />
                                     Recommended Videos
                                 </h2>
-                                <p className="text-zinc-400 text-sm mt-1">
+                                <p className="text-muted-foreground text-sm mt-1">
                                     Top picks for learning about <span className="text-primary font-medium">{topic}</span>
                                 </p>
                             </div>
                             <button
                                 onClick={onClose}
-                                className="p-2 hover:bg-zinc-800 rounded-full transition-colors text-zinc-400 hover:text-white"
+                                className="p-2 hover:bg-accent rounded-full transition-colors text-muted-foreground hover:text-foreground"
                             >
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
 
                         {/* Content */}
-                        <div className="flex-1 overflow-y-auto p-6 bg-[#0a0a0a]">
+                        <div className="flex-1 overflow-y-auto p-6 bg-background">
                             {loading ? (
                                 <div className="flex flex-col items-center justify-center h-64 gap-4">
                                     <Loader2 className="h-10 w-10 text-primary animate-spin" />
-                                    <p className="text-zinc-500">Curating best videos for you...</p>
+                                    <p className="text-muted-foreground">Curating best videos for you...</p>
                                 </div>
                             ) : videos.length > 0 ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -109,16 +109,16 @@ export function YouTubeModal({ isOpen, onClose, topic, subject }: YouTubeModalPr
                                             href={video.link}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="group relative bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden hover:border-zinc-700 transition-all hover:shadow-xl hover:shadow-primary/5 cursor-pointer block"
+                                            className="group relative bg-card border border-border rounded-xl overflow-hidden hover:border-primary/50 transition-all hover:shadow-xl hover:shadow-primary/5 cursor-pointer block"
                                         >
                                             <div className="aspect-video w-full relative overflow-hidden">
                                                 <img
                                                     src={video.thumbnail}
                                                     alt={video.title}
-                                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-80 group-hover:opacity-100"
+                                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-90 group-hover:opacity-100"
                                                 />
                                                 <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                                                    <div className="h-12 w-12 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 text-white opacity-0 group-hover:opacity-100 transform scale-75 group-hover:scale-100 transition-all duration-300">
+                                                    <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/40 text-white opacity-0 group-hover:opacity-100 transform scale-75 group-hover:scale-100 transition-all duration-300">
                                                         <PlayCircle className="h-6 w-6 fill-white text-transparent" />
                                                     </div>
                                                 </div>
@@ -128,15 +128,15 @@ export function YouTubeModal({ isOpen, onClose, topic, subject }: YouTubeModalPr
                                             </div>
 
                                             <div className="p-4 space-y-2">
-                                                <h3 className="font-semibold text-zinc-100 line-clamp-2 leading-tight group-hover:text-primary transition-colors">
+                                                <h3 className="font-semibold text-card-foreground line-clamp-2 leading-tight group-hover:text-primary transition-colors">
                                                     {video.title}
                                                 </h3>
 
-                                                <div className="flex items-center justify-between text-xs text-zinc-500 mt-3 border-t border-zinc-800/50 pt-3">
-                                                    <span className="flex items-center gap-1.5 hover:text-zinc-300 transition-colors">
+                                                <div className="flex items-center justify-between text-xs text-muted-foreground mt-3 border-t border-border pt-3">
+                                                    <span className="flex items-center gap-1.5 hover:text-foreground transition-colors">
                                                         <span className="font-medium truncate max-w-[120px]">{video.channel}</span>
                                                     </span>
-                                                    <span className="bg-zinc-800/50 px-2 py-0.5 rounded-full font-mono text-[10px]">
+                                                    <span className="bg-secondary px-2 py-0.5 rounded-full font-mono text-[10px] text-secondary-foreground">
                                                         {video.viewCount} views
                                                     </span>
                                                 </div>
@@ -146,7 +146,7 @@ export function YouTubeModal({ isOpen, onClose, topic, subject }: YouTubeModalPr
                                 </div>
                             ) : (
                                 <div className="flex flex-col items-center justify-center h-64 text-center">
-                                    <p className="text-zinc-500 mb-2">No videos found for this topic.</p>
+                                    <p className="text-muted-foreground mb-2">No videos found for this topic.</p>
                                     <button
                                         onClick={fetchVideos}
                                         className="text-primary hover:underline text-sm"

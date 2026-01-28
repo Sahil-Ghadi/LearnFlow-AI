@@ -111,9 +111,15 @@ async def get_sidehustle_dashboard(uid: str):
                     'progress': progress,
                     'icon': get_icon(skill.get('name', ''))
                 })
-        elif profile_data.get('side_hustle_interests'):
-            # Use profile interests if no detailed skills exist yet
+        
+        # Merge with profile interests that aren't already covered by skills
+        existing_skill_names = set(s.get('name', '').lower() for s in skill_progress)
+        
+        if profile_data.get('side_hustle_interests'):
             for interest in profile_data.get('side_hustle_interests', []):
+                if interest.lower() in existing_skill_names:
+                    continue
+                    
                 progress = 0
                 try:
                     roadmap_doc = user_ref.collection("roadmaps").document(interest.lower()).get()

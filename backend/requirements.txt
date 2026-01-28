@@ -11,3 +11,5 @@ pydantic
 python-multipart
 youtube-search
 google-generativeai
+pypdf 
+python-multipart

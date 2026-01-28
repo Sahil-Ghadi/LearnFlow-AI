@@ -19,6 +19,8 @@ from routes.chat import router as chat_router
 from routes.roadmap import router as roadmap_router
 from routes.projects import router as projects_router
 from routes.resume import router as resume_router
+from routes.assignments import router as assignments_router
+from routes.jobs import router as jobs_router
 
 # Load environment variables
 load_dotenv()
@@ -55,6 +57,8 @@ app.include_router(chat_router)
 app.include_router(roadmap_router)
 app.include_router(projects_router)
 app.include_router(resume_router)
+app.include_router(assignments_router)
+app.include_router(jobs_router)
 
 @app.get("/")
 def read_root():

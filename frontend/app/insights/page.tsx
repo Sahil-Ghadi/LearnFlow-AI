@@ -14,7 +14,7 @@ import { DashboardLayout } from '@/components/DashboardLayout';
 import { GlowCard, StatCard, ProgressBar } from '@/components/ui/GlowCard';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useMode } from '@/contexts/ModeContext';
-import { StudyReminders } from '@/components/StudyReminders';
+import { AssignmentUpload } from '@/components/dashboard/AssignmentUpload';
 import { useRouter } from 'next/navigation';
 import { SideHustleInsights } from '@/components/dashboard/SideHustleInsights';
 
@@ -193,7 +193,9 @@ export default function InsightsPage() {
 
                     {/* Reminders & Weak Areas Row */}
                     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                        <StudyReminders />
+                        <GlowCard className="h-[400px]">
+                            <AssignmentUpload />
+                        </GlowCard>
 
                         {/* Weak Areas */}
                         <GlowCard delay={0.3}>

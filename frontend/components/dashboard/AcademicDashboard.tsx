@@ -84,9 +84,9 @@ export function AcademicDashboard() {
       transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
       className="space-y-6"
     >
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[55fr_45fr]">
         {/* Advanced AI Study Planner */}
-        <div className="lg:col-span-2">
+        <div className="">
           <GlowCard className="h-[650px] relative overflow-hidden flex flex-col">
             <div className="absolute top-0 right-0 p-4 z-10">
               <Button
@@ -119,7 +119,7 @@ export function AcademicDashboard() {
         </div>
 
         {/* Upcoming Deadlines Panel */}
-        <div className="lg:col-span-1">
+        <div className="">
           <UpcomingDeadlines onRefreshStats={fetchDashboardData} />
         </div>
       </div>

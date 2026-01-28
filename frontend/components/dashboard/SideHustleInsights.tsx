@@ -18,6 +18,7 @@ import { useMode } from '@/contexts/ModeContext';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { exportResumeToPDF } from '@/lib/exportResume';
+import { JobMarketGap } from './JobMarketGap';
 
 export function SideHustleInsights() {
     const { user } = useMode();
@@ -284,6 +285,10 @@ export function SideHustleInsights() {
                     )}
                 </GlowCard>
             </div>
-        </motion.div>
+
+            <div className="mt-8">
+                <JobMarketGap />
+            </div>
+        </motion.div >
     );
 }
