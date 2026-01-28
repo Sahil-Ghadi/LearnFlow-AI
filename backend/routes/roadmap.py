@@ -139,6 +139,40 @@ async def toggle_progress(request: UpdateProgressRequest):
                     })
                 except Exception as e:
                     print(f"Failed to log activity: {e}")
+
+            # Update Skill Mastery
+            try:
+                total_items = 0
+                completed_items = 0
+                for phase in data.get('phases', []):
+                    items = phase.get('items', [])
+                    total_items += len(items)
+                    completed_items += sum(1 for i in items if i.get('completed'))
+                
+                if total_items > 0:
+                    mastery = int((completed_items / total_items) * 100)
+                    
+                    # Update or Create Skill in 'skills' collection
+                    skills_ref = db.collection("user_profiles").document(request.uid).collection("skills")
+                    
+                    # Try to find existing skill
+                    # We'll use a query since ID might differ from name
+                    query = skills_ref.where("name", "==", request.skill).limit(1)
+                    results = list(query.stream())
+                    
+                    if results:
+                        # Update existing
+                        results[0].reference.update({"mastery": mastery})
+                    else:
+                        # Create new
+                        skills_ref.add({
+                            "name": request.skill,
+                            "mastery": mastery,
+                            "status": "in_progress",
+                            "icon": "Code" 
+                        })
+            except Exception as e:
+                print(f"Failed to update skill mastery: {e}")
             
             # Check if this completion finished a phase
             project_unlocked = False

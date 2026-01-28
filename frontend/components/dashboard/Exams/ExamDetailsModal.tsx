@@ -19,12 +19,13 @@ interface ExamDetailsModalProps {
 }
 
 import { AssessmentModal } from './AssessmentModal';
+import { YouTubeModal } from '@/components/dashboard/SideHustle/YouTubeModal';
 
 export function ExamDetailsModal({ isOpen, onClose, exam, onUpdate }: ExamDetailsModalProps) {
     const { user } = useMode();
     const [activeTopicIdx, setActiveTopicIdx] = useState<number | null>(null);
-    const [recommendations, setRecommendations] = useState<any[]>([]);
-    const [isLoadingHelp, setIsLoadingHelp] = useState(false);
+    const [selectedVideoTopic, setSelectedVideoTopic] = useState<string | null>(null);
+    const [selectedVideoSubject, setSelectedVideoSubject] = useState<string>("General");
     const [showAssessment, setShowAssessment] = useState(false);
 
     const [localSyllabus, setLocalSyllabus] = useState<any[]>([]);
@@ -66,37 +67,8 @@ export function ExamDetailsModal({ isOpen, onClose, exam, onUpdate }: ExamDetail
     };
 
     const handleGetHelp = async (topic: string, index: number) => {
-        if (activeTopicIdx === index) {
-            setActiveTopicIdx(null); // toggle off
-            return;
-        }
-
-        setActiveTopicIdx(index);
-        setIsLoadingHelp(true);
-        setRecommendations([]);
-
-        try {
-            const response = await fetch('http://localhost:8000/learning/recommend', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    topic: topic,
-                    subject: exam.subject || "General"
-                })
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setRecommendations(data);
-            } else {
-                toast.error("Could not fetch recommendations");
-            }
-        } catch (error) {
-            console.error("Error fetching help:", error);
-            toast.error("Failed to get AI help");
-        } finally {
-            setIsLoadingHelp(false);
-        }
+        setSelectedVideoTopic(topic);
+        setSelectedVideoSubject(exam.subject || "General");
     };
 
     const totalTopics = localSyllabus.length;
@@ -230,68 +202,7 @@ export function ExamDetailsModal({ isOpen, onClose, exam, onUpdate }: ExamDetail
                                         )}
                                     </div>
 
-                                    {/* Recommendations Section */}
-                                    {activeTopicIdx === idx && (
-                                        <motion.div
-                                            initial={{ opacity: 0, height: 0 }}
-                                            animate={{ opacity: 1, height: 'auto' }}
-                                            className="ml-4 pl-4 border-l-2 border-primary/20 overflow-hidden"
-                                        >
-                                            {isLoadingHelp ? (
-                                                <div className="py-4 flex flex-col items-center justify-center gap-2 text-xs text-zinc-500 animate-pulse bg-zinc-50 rounded-xl">
-                                                    <Sparkles className="h-4 w-4 text-primary" />
-                                                    <p>Finding best tutorials...</p>
-                                                </div>
-                                            ) : recommendations && recommendations.length > 0 ? (
-                                                <div className="py-2 space-y-3">
-                                                    <p className="text-xs font-bold text-primary flex items-center gap-1">
-                                                        <Youtube className="h-3 w-3" />
-                                                        Recommended Videos
-                                                    </p>
-                                                    <div className="grid grid-cols-2 gap-3">
-                                                        {recommendations.map((video: any, i: number) => (
-                                                            <a
-                                                                key={i}
-                                                                href={video.link}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="group/card block rounded-lg overflow-hidden bg-white border border-zinc-200 hover:border-primary/30 hover:shadow-md transition-all"
-                                                            >
-                                                                {/* Thumbnail */}
-                                                                <div className="relative aspect-video w-full overflow-hidden bg-zinc-100">
-                                                                    {video.thumbnail ? (
-                                                                        <img src={video.thumbnail} alt={video.title} className="h-full w-full object-cover opacity-90 group-hover/card:opacity-100 transition-opacity" />
-                                                                    ) : (
-                                                                        <div className="h-full w-full flex items-center justify-center text-zinc-300">
-                                                                            <Youtube className="h-8 w-8" />
-                                                                        </div>
-                                                                    )}
-                                                                    <div className="absolute bottom-1 right-1 px-1 py-0.5 bg-black/80 rounded text-[9px] font-mono text-white">
-                                                                        {video.duration}
-                                                                    </div>
-                                                                </div>
 
-                                                                {/* Content */}
-                                                                <div className="p-2 space-y-1">
-                                                                    <h4 className="text-[11px] font-medium text-zinc-900 line-clamp-2 leading-tight group-hover/card:text-primary transition-colors">
-                                                                        {video.title}
-                                                                    </h4>
-                                                                    <div className="flex items-center justify-between text-[10px] text-zinc-500">
-                                                                        <span className="truncate max-w-[60%]">{video.channel}</span>
-                                                                        <span>{video.viewCount} views</span>
-                                                                    </div>
-                                                                </div>
-                                                            </a>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="py-2 text-center text-xs text-zinc-600 italic">
-                                                    No videos found for this topic.
-                                                </div>
-                                            )}
-                                        </motion.div>
-                                    )}
                                 </div>
                             ))}
 
@@ -309,6 +220,13 @@ export function ExamDetailsModal({ isOpen, onClose, exam, onUpdate }: ExamDetail
                 onClose={() => setShowAssessment(false)}
                 exam={exam}
                 onUpdate={onUpdate}
+            />
+
+            <YouTubeModal
+                isOpen={!!selectedVideoTopic}
+                onClose={() => setSelectedVideoTopic(null)}
+                topic={selectedVideoTopic || ""}
+                subject={selectedVideoSubject}
             />
         </div>
     );

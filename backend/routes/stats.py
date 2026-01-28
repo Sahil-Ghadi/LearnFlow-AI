@@ -26,7 +26,7 @@ async def get_academic_stats(uid: str):
         area_counts = Counter(weak_areas_list)
         
         weak_areas = []
-        for topic, count in area_counts.most_common(5): # Take top 5 most frequent
+        for topic, count in area_counts.most_common(): # Take all
             # Formula: Base 30% + 15% per occurrence, max 95%
             # 1 mistake = 45%
             # 2 mistakes = 60%
@@ -100,7 +100,7 @@ async def get_academic_stats(uid: str):
             accuracies.append(score)
             
             # Label
-            date_label = data.get('date').strftime("%d/%m") if data.get('date') else "Test"
+            date_label = data.get('date').strftime("%d/%m %H:%M") if data.get('date') else "Test"
             
             performance_data.append({
                 "name": date_label,
@@ -123,7 +123,7 @@ async def get_academic_stats(uid: str):
              decisions.append({"id": 1, "message": "Study plan optimized based on recent activity.", "time": "Just now"})
 
         return {
-            "weak_areas": weak_areas[:3], # Top 3
+            "weak_areas": weak_areas, # All areas
             "performance_graph": performance_data if performance_data else [{"name": "Start", "marks": 0, "accuracy": 0}],
             "accuracy_rate": global_accuracy,
             "exam_readiness": avg_readiness,

@@ -155,7 +155,9 @@ async def get_sidehustle_dashboard(uid: str):
         
         # Format assigned projects
         assigned_projects = []
-        for project in all_projects[:5]:  # Top 5 projects
+        active_projects = [p for p in all_projects if p.get('status') == 'assigned']
+        
+        for project in active_projects[:5]:  # Top 5 active projects
             assigned_projects.append({
                 'id': project.get('id', ''),
                 'title': project.get('title', ''),

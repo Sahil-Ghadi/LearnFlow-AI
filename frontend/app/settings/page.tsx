@@ -8,8 +8,10 @@ import {
   Sliders,
   Save,
   User,
-  GraduationCap
+  GraduationCap,
+  LogOut
 } from 'lucide-react';
+import { auth } from '@/lib/firebase';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { GlowCard } from '@/components/ui/GlowCard';
 import { Button } from '@/components/ui/button';
@@ -22,7 +24,7 @@ import { useMode } from '@/contexts/ModeContext';
 import { toast } from 'sonner';
 
 export default function ProfilePage() {
-  const { userProfile, setUserProfile, isOnboarded, isLoading } = useMode();
+  const { userProfile, setUserProfile, isOnboarded, isLoading, isAuthenticated } = useMode();
   const router = useRouter();
   const [settings, setSettings] = useState({
     dailyStudyHours: 4,
@@ -34,13 +36,25 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
-    if (!isLoading && !isOnboarded) {
+    if (!isLoading && isAuthenticated && !isOnboarded) {
       router.push('/onboarding');
     }
-  }, [isOnboarded, isLoading, router]);
+  }, [isOnboarded, isLoading, router, isAuthenticated]);
 
   const handleSave = () => {
     toast.success('Profile updated successfully!');
+  };
+
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+      localStorage.removeItem(`userProfile_${userProfile?.name}`); // Optional cleanup
+      router.push('/'); // Redirect to login
+      toast.success('Signed out successfully');
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast.error('Failed to sign out');
+    }
   };
 
   if (isLoading || !isOnboarded) {
@@ -100,7 +114,7 @@ export default function ProfilePage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone Number</Label>
-                <Input id="phone" type="tel" placeholder="+1 (555) 000-0000" className="bg-muted/50" />
+                <Input id="phone" type="tel" placeholder="+91 XXXXX XXXXX" className="bg-muted/50" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="website">Personal Website</Label>
@@ -241,7 +255,19 @@ export default function ProfilePage() {
             Save Profile
           </Button>
         </motion.div>
+
+        {/* Sign Out Section */}
+        <div className="mt-12 pt-8 border-t border-zinc-800 flex justify-center">
+          <Button
+            variant="destructive"
+            onClick={handleLogout}
+            className="gap-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 border border-red-500/50"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign Out
+          </Button>
+        </div>
       </div>
-    </DashboardLayout>
+    </DashboardLayout >
   );
 }

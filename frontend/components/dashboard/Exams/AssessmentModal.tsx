@@ -8,6 +8,7 @@ import {
   ArrowRight,
   Brain,
   Trophy,
+  TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -325,100 +326,154 @@ export function AssessmentModal({
             )}
 
             {/* RESULT STEP */}
+            {/* RESULT STEP */}
+            {/* RESULT STEP */}
             {step === "result" && result && (
               <motion.div
                 key="result"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="text-center space-y-8"
+                className="flex flex-col gap-6 py-2"
               >
-                <div className="relative inline-block">
-                  <svg className="h-32 w-32 rotate-[-90deg]">
-                    <circle
-                      cx="64"
-                      cy="64"
-                      r="56"
-                      stroke="currentColor"
-                      strokeWidth="8"
-                      fill="transparent"
-                      className="text-zinc-100"
-                    />
-                    <circle
-                      cx="64"
-                      cy="64"
-                      r="56"
-                      stroke="currentColor"
-                      strokeWidth="8"
-                      fill="transparent"
-                      className={
-                        result.accuracy >= 70
-                          ? "text-green-500"
-                          : result.accuracy >= 40
-                            ? "text-yellow-500"
-                            : "text-red-500"
-                      }
-                      strokeDasharray={351}
-                      strokeDashoffset={351 - (351 * result.accuracy) / 100}
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-3xl font-bold text-zinc-900">
-                      {Math.round(result.accuracy)}%
-                    </span>
-                    <span className="text-xs text-zinc-500 uppercase">
-                      Accuracy
-                    </span>
-                  </div>
-                </div>
+                <div className="flex flex-col md:flex-row items-center gap-8">
+                  {/* Left: Score Ring */}
+                  <div className="relative shrink-0">
+                    {/* Outer Glow */}
+                    <div className={cn(
+                      "absolute inset-0 rounded-full blur-xl opacity-20",
+                      result.accuracy >= 70 ? "bg-green-500" : result.accuracy >= 40 ? "bg-yellow-500" : "bg-red-500"
+                    )} />
 
-                <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto">
-                  <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-100">
-                    <p className="text-2xl font-bold text-zinc-900">
-                      {result.score}/{result.total}
-                    </p>
-                    <p className="text-xs text-zinc-500">Correct Answers</p>
-                  </div>
-                  <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-100">
-                    <p className="text-2xl font-bold text-zinc-900">
-                      {Math.round(result.readiness)}%
-                    </p>
-                    <p className="text-xs text-zinc-500">Exam Readiness</p>
-                  </div>
-                </div>
+                    {/* Progress Ring */}
+                    <div className="relative h-40 w-40">
+                      <svg className="h-full w-full rotate-[-90deg]">
+                        {/* Background Circle */}
+                        <circle
+                          cx="80"
+                          cy="80"
+                          r="70"
+                          stroke="currentColor"
+                          strokeWidth="10"
+                          fill="transparent"
+                          className="text-zinc-100"
+                        />
+                        {/* Progress Circle */}
+                        <motion.circle
+                          cx="80"
+                          cy="80"
+                          r="70"
+                          stroke="currentColor"
+                          strokeWidth="10"
+                          fill="transparent"
+                          className={cn(
+                            result.accuracy >= 70 ? "text-green-500" : result.accuracy >= 40 ? "text-yellow-500" : "text-red-500"
+                          )}
+                          strokeLinecap="round"
+                          strokeDasharray={440} // 2 * pi * 70
+                          initial={{ strokeDashoffset: 440 }}
+                          animate={{ strokeDashoffset: 440 - (440 * result.accuracy) / 100 }}
+                          transition={{ duration: 1.5, ease: "easeOut" }}
+                        />
+                      </svg>
 
-                {result.weak_areas && result.weak_areas.length > 0 && (
-                  <div className="text-left bg-red-500/10 border border-red-500/20 p-4 rounded-xl">
-                    <h4 className="text-sm font-bold text-red-400 mb-2 flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4" />
-                      Identified Weak Areas
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {result.weak_areas.map((topic: string, i: number) => (
-                        <span
-                          key={i}
-                          className="px-2 py-1 bg-red-500/20 text-red-300 text-xs rounded"
+                      {/* Inner Text */}
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <motion.span
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.5 }}
+                          className="text-3xl font-heading font-extrabold text-zinc-900"
                         >
-                          {topic}
+                          {Math.round(result.accuracy)}%
+                        </motion.span>
+                        <span className="text-xs font-medium text-zinc-500 uppercase tracking-wide">
+                          Accuracy
                         </span>
-                      ))}
+                      </div>
                     </div>
                   </div>
-                )}
 
-                <div className="flex gap-3 justify-center pt-4">
+                  {/* Right: Stats & Message */}
+                  <div className="flex-1 space-y-4 text-center md:text-left">
+                    <div>
+                      <h3 className="text-xl font-bold text-zinc-900">
+                        {result.accuracy >= 90 ? "Outstanding!" :
+                          result.accuracy >= 70 ? "Great Job!" :
+                            result.accuracy >= 50 ? "Good Effort!" : "Keep Practicing"}
+                      </h3>
+                      <p className="text-sm text-zinc-500">
+                        {result.accuracy >= 70
+                          ? "You've mastered these concepts nicely."
+                          : "Identify your weak spots to improve."}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-zinc-50 p-3 rounded-lg border border-zinc-100 flex flex-col items-center md:items-start">
+                        <div className="flex items-center gap-2 mb-1">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          <span className="text-[10px] text-zinc-500 uppercase font-bold">Correct</span>
+                        </div>
+                        <span className="text-xl font-bold text-zinc-900">{result.score}/{result.total}</span>
+                      </div>
+
+                      <div className="bg-zinc-50 p-3 rounded-lg border border-zinc-100 flex flex-col items-center md:items-start">
+                        <div className="flex items-center gap-2 mb-1">
+                          <TrendingUp className="h-4 w-4 text-blue-500" />
+                          <span className="text-[10px] text-zinc-500 uppercase font-bold">Readiness</span>
+                        </div>
+                        <span className="text-xl font-bold text-zinc-900">{Math.round(result.readiness)}%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Weak Areas - Full width but compact */}
+                <div className="w-full">
+                  {result.weak_areas && result.weak_areas.length > 0 ? (
+                    <div className="bg-red-50/50 border border-red-100 rounded-lg p-3">
+                      <h4 className="text-xs font-bold text-red-600 mb-2 flex items-center gap-2">
+                        <AlertCircle className="h-3 w-3" />
+                        Focus Areas
+                      </h4>
+                      <div className="flex flex-wrap gap-1.5">
+                        {result.weak_areas.slice(0, 5).map((topic: string, i: number) => (
+                          <span
+                            key={i}
+                            className="px-2 py-0.5 bg-white border border-red-100 text-red-500 text-[10px] font-medium rounded-full"
+                          >
+                            {topic}
+                          </span>
+                        ))}
+                        {result.weak_areas.length > 5 && (
+                          <span className="px-2 py-0.5 text-zinc-400 text-[10px] font-medium">+{result.weak_areas.length - 5} more</span>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-green-50/50 border border-green-100 rounded-lg p-3 flex items-center justify-center gap-2 text-green-700 text-xs font-medium">
+                      <Trophy className="h-3 w-3" />
+                      No weak areas detected!
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3 justify-end pt-2 border-t border-zinc-100">
                   <Button
-                    variant="outline"
+                    variant="ghost"
+                    size="sm"
                     onClick={onClose}
-                    className="border-zinc-200 hover:bg-zinc-100 text-zinc-600"
-                  >
-                    Take a Break
-                  </Button>
-                  <Button
-                    onClick={handleFinish}
-                    className="bg-zinc-900 text-white hover:bg-zinc-800"
+                    className="text-zinc-500 hover:text-zinc-900"
                   >
                     Close
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleFinish}
+                    className="bg-primary text-white hover:bg-primary/90"
+                  >
+                    Continue Journey
                   </Button>
                 </div>
               </motion.div>

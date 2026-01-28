@@ -87,13 +87,13 @@ export function AcademicDashboard() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[55fr_45fr]">
         {/* Advanced AI Study Planner */}
         <div className="">
-          <GlowCard className="h-[650px] relative overflow-hidden flex flex-col">
+          <GlowCard className="h-[560px] relative overflow-hidden flex flex-col">
             <div className="absolute top-0 right-0 p-4 z-10">
               <Button
                 onClick={() => setIsSettingsOpen(true)}
                 variant="outline"
                 size="sm"
-                className="gap-2 bg-white/5 border-white/10 hover:bg-white/10 text-xs"
+                className="gap-2 bg-white/5 border-white/10 hover:bg-white/10 hover:scale-105 text-xs cursor-pointer hover:text-black"
               >
                 <Settings className="h-3.5 w-3.5" />
                 Configure

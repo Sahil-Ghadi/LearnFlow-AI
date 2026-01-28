@@ -114,11 +114,6 @@ export function SideHustleInsights() {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-8"
         >
-            {/* Helper Note */}
-            <div className="flex items-center gap-2 text-muted-foreground mb-4">
-                <BarChart3 className="h-4 w-4" />
-                <span className="text-sm">Side Hustle Performance Metrics</span>
-            </div>
 
             {/* Moved Stats Row */}
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -173,6 +168,7 @@ export function SideHustleInsights() {
                                     fontSize={12}
                                     tickLine={false}
                                     axisLine={false}
+                                    allowDecimals={false}
                                     tickFormatter={(value) => `${value}`}
                                 />
                                 <Tooltip

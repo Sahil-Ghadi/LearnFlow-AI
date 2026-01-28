@@ -4,6 +4,7 @@ from typing import List, Optional
 from utils.llm import llm
 from datetime import datetime, timedelta
 from firebase_admin import firestore
+from utils.timeline_logger import log_timeline_event
 
 router = APIRouter(prefix="/planner", tags=["planner"])
 db = firestore.client()
@@ -108,6 +109,20 @@ Generate a realistic weekly schedule."""
             
             plan_ref = db.collection("user_profiles").document(settings.uid).collection("generated_plans").add(plan_data)
             print(f"Plan saved to Firestore with ID: {plan_ref[1].id}")
+            
+            # Log to Timeline
+            await log_timeline_event(
+                uid=settings.uid,
+                type="schedule",
+                title="Study Plan Generated",
+                description=f"Created daily optimized schedule",
+                icon="Calendar",
+                details=[
+                    f"Total: {settings.available_hours}h",
+                    f"Mode: {settings.view_mode}",
+                    f"Constraints: {settings.constraints[:20]}..." if settings.constraints else "No constraints"
+                ]
+            )
         except Exception as e:
             print(f"Failed to save plan to Firestore: {str(e)}")
 

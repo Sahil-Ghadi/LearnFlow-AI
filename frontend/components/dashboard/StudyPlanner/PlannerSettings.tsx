@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Clock, Calendar, MessageSquare, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -26,13 +26,26 @@ export interface PlannerSettingsData {
 }
 
 export function PlannerSettings({ isOpen, onClose, onGenerate, isLoading }: PlannerSettingsProps) {
+    const getCurrentTime = () => {
+        const now = new Date();
+        const hours = now.getHours().toString().padStart(2, '0');
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        return `${hours}:${minutes}`;
+    };
+
     const [data, setData] = useState<PlannerSettingsData>({
         available_hours: 4,
-        start_time: '09:00',
+        start_time: getCurrentTime(),
         end_time: '21:00',
         constraints: '',
         view_mode: 'daily',
     });
+
+    useEffect(() => {
+        if (isOpen) {
+            setData(prev => ({ ...prev, start_time: getCurrentTime() }));
+        }
+    }, [isOpen]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     if (!isOpen) return null;
@@ -93,9 +106,16 @@ export function PlannerSettings({ isOpen, onClose, onGenerate, isLoading }: Plan
                         <div className="space-y-2">
                             <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Start Time</Label>
                             <Input
+                                min={getCurrentTime()}
                                 type="time"
                                 value={data.start_time}
-                                onChange={(e) => setData({ ...data, start_time: e.target.value })}
+                                onChange={(e) => {
+                                    const newTime = e.target.value;
+                                    const currentTime = getCurrentTime();
+                                    if (newTime >= currentTime) {
+                                        setData({ ...data, start_time: newTime });
+                                    }
+                                }}
                                 className="bg-muted border-border text-foreground focus:border-primary"
                             />
                         </div>

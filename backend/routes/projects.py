@@ -188,8 +188,27 @@ async def submit_project(submission: ProjectSubmission):
                     "type": "success",
                     "created_at": datetime.now().isoformat()
                 })
+
+                # Log Practice Session (Update Weekly Stats)
+                est_time_str = project_data.get('estimated_time', '0')
+                import re
+                numbers = [int(n) for n in re.findall(r'\d+', str(est_time_str))]
+                hours = 0
+                if numbers:
+                    # If range "5-10 hours", take average. If "8 hours", take 8.
+                    hours = sum(numbers) / len(numbers)
+                
+                if hours > 0:
+                    db.collection("user_profiles").document(submission.uid).collection("practice_sessions").add({
+                        "date": datetime.now(),
+                        "duration": int(hours * 60), # Convert to minutes
+                        "type": "project",
+                        "description": f"Completed Project: {project_data.get('title')}"
+                    })
+
             except Exception as e:
-                print(f"Failed to log project activity: {e}")
+                print(f"Failed to log project activity/stats: {e}")
+
             return {
                 "passed": True,
                 "grade": result.get('grade'),

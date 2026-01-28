@@ -316,17 +316,6 @@ export default function OnboardingPage() {
               </div>
             </div>
           </div>
-
-          <div className="mt-12 p-6 rounded-[1.5rem] bg-white border border-zinc-200 backdrop-blur-md relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="flex items-center gap-3 mb-3">
-              <Sparkles className="h-4 w-4 text-accent animate-pulse" />
-              <span className="text-[10px] font-black text-accent uppercase tracking-[0.2em]">Neural Engine</span>
-            </div>
-            <p className="text-[11px] leading-relaxed text-zinc-500 font-medium italic">
-              "Input gathered. Optimizing learning algorithms based on your university profile..."
-            </p>
-          </div>
         </div>
 
         {/* Right Panel: Active Step Content */}

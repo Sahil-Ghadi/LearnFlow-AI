@@ -30,7 +30,7 @@ export function PlannerCalendar({ scheduleData, viewMode }: PlannerCalendarProps
 
     if (!scheduleData || scheduleData.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 bg-card rounded-[2rem] border border-border">
+            <div className="flex flex-col items-center justify-center py-20 bg-card rounded-[2rem] border border-border h-[440px]">
                 <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center mb-4">
                     <CalendarIcon className="h-10 w-10 text-muted-foreground" />
                 </div>

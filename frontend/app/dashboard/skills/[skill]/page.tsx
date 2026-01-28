@@ -193,7 +193,7 @@ export default function SkillRoadmapPage() {
 
                     <div className="w-full h-px bg-zinc-900" />
 
-                    {/* Main Content */}
+                    {/* Main Content - Tree Layout */}
                     {loading ? (
                         <div className="flex flex-col items-center justify-center py-20 gap-6">
                             <div className="relative">
@@ -201,160 +201,166 @@ export default function SkillRoadmapPage() {
                                 <Loader2 className="h-12 w-12 text-primary animate-spin relative z-10" />
                             </div>
                             <div className="text-center space-y-2">
-                                <h3 className="text-xl font-medium text-white">Generating Roadmap</h3>
-                                <p className="text-zinc-500">Our AI agent is crafting your personalized learning path...</p>
+                                <h3 className="text-xl font-medium text-white">Cultivating Knowledge Tree</h3>
+                                <p className="text-zinc-500">AI is structuring your learning path...</p>
                             </div>
                         </div>
                     ) : roadmap ? (
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                        <div className="max-w-3xl mx-auto relative pb-20">
+                            {/* The Trunk */}
+                            <div className="absolute left-[27px] md:left-8 top-4 bottom-0 w-0.5 bg-gradient-to-b from-primary/50 via-zinc-800 to-transparent" />
 
-                            {/* Sidebar / Phase Navigation (Desktop) */}
-                            <div className="hidden lg:block space-y-4 sticky top-8">
-                                <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-wider px-2">Phases</h3>
-                                <div className="space-y-1">
-                                    {roadmap.phases.map((phase, index) => {
-                                        const isActive = expandedPhase === phase.id;
-                                        const isCompleted = phase.items.every(i => i.completed);
+                            <div className="space-y-12">
+                                {roadmap.phases.map((phase, phaseIndex) => {
+                                    const isPhaseCompleted = phase.items.every(i => i.completed);
+                                    const isExpanded = expandedPhase === phase.id;
 
-                                        return (
+                                    return (
+                                        <div key={phase.id} className="relative pl-20 md:pl-24">
+                                            {/* Phase Node (Trunk Connection) */}
                                             <button
-                                                key={phase.id}
-                                                onClick={() => setExpandedPhase(phase.id)}
+                                                onClick={() => setExpandedPhase(isExpanded ? null : phase.id)}
                                                 className={cn(
-                                                    "w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all border",
-                                                    isActive
-                                                        ? "bg-primary/10 border-primary/20 text-white shadow-sm"
-                                                        : "bg-transparent border-transparent text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+                                                    "absolute left-0 md:left-1 top-0 w-14 h-14 rounded-2xl border-4 flex items-center justify-center transition-all duration-300 z-10 shadow-xl",
+                                                    isPhaseCompleted
+                                                        ? "bg-zinc-900 border-primary text-primary shadow-primary/20"
+                                                        : isExpanded
+                                                            ? "bg-primary border-primary text-black shadow-primary/20"
+                                                            : "bg-zinc-900 border-zinc-700 text-zinc-500 hover:border-zinc-500"
                                                 )}
                                             >
-                                                <div className={cn(
-                                                    "h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold border transition-colors",
-                                                    isActive
-                                                        ? "border-primary bg-primary text-white"
-                                                        : isCompleted
-                                                            ? "border-zinc-700 bg-zinc-800 text-zinc-400"
-                                                            : "border-zinc-700 bg-transparent text-zinc-600"
-                                                )}>
-                                                    {isCompleted ? <CheckCircle className="h-3 w-3" /> : index + 1}
-                                                </div>
-                                                <span className="font-medium truncate">{phase.title}</span>
+                                                <span className="text-lg font-bold">{phaseIndex + 1}</span>
                                             </button>
-                                        );
-                                    })}
-                                </div>
+
+                                            {/* Phase Content */}
+                                            <div className="relative">
+                                                <button
+                                                    onClick={() => setExpandedPhase(isExpanded ? null : phase.id)}
+                                                    className="text-left w-full group"
+                                                >
+                                                    <h2 className={cn(
+                                                        "text-2xl font-bold transition-colors flex items-center gap-3",
+                                                        isExpanded ? "text-primary" : "text-white group-hover:text-primary/80"
+                                                    )}>
+                                                        {phase.title}
+                                                        {isPhaseCompleted && <CheckCircle className="h-6 w-6 text-primary fill-primary/10" />}
+                                                    </h2>
+                                                    <p className="text-zinc-500 mt-1 font-medium">{phase.items.length} Modules</p>
+                                                </button>
+
+                                                {/* Branching Items */}
+                                                <AnimatePresence>
+                                                    {isExpanded && (
+                                                        <motion.div
+                                                            initial={{ opacity: 0, height: 0 }}
+                                                            animate={{ opacity: 1, height: "auto" }}
+                                                            exit={{ opacity: 0, height: 0 }}
+                                                            className="overflow-hidden"
+                                                        >
+                                                            <div className="pt-8 space-y-6 relative">
+                                                                {/* Branch Line */}
+                                                                <div className="absolute left-[-29px] md:left-[-25px] top-4 bottom-6 w-0.5 bg-zinc-800" />
+
+                                                                {phase.items.map((item, itemIndex) => (
+                                                                    <motion.div
+                                                                        key={item.id}
+                                                                        initial={{ x: -20, opacity: 0 }}
+                                                                        animate={{ x: 0, opacity: 1 }}
+                                                                        transition={{ delay: itemIndex * 0.1 }}
+                                                                        className="relative group/item"
+                                                                    >
+                                                                        {/* Connector */}
+                                                                        <div className="absolute left-[-29px] md:left-[-25px] top-8 w-6 md:w-8 h-px bg-zinc-800 group-hover/item:bg-zinc-600 transition-colors" />
+                                                                        <div className={cn(
+                                                                            "absolute left-[-33px] md:left-[-29px] top-[29px] w-2 h-2 rounded-full border transition-colors z-10",
+                                                                            item.completed ? "bg-primary border-primary" : "bg-zinc-900 border-zinc-600 group-hover/item:border-primary"
+                                                                        )} />
+
+                                                                        {/* Item Card */}
+                                                                        <div
+                                                                            onClick={(e) => handleToggle(phase.id, item.id, item.completed, e)}
+                                                                            className={cn(
+                                                                                "p-5 rounded-xl border transition-all cursor-pointer relative overflow-hidden",
+                                                                                item.completed
+                                                                                    ? "bg-zinc-900/60 border-primary/30"
+                                                                                    : "bg-zinc-900/40 border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/60"
+                                                                            )}
+                                                                        >
+                                                                            <div className="flex items-start gap-4">
+                                                                                <div className={cn(
+                                                                                    "mt-1 w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition-colors",
+                                                                                    item.completed ? "bg-primary border-primary text-black" : "border-zinc-600 text-transparent"
+                                                                                )}>
+                                                                                    <CheckCircle className="h-3.5 w-3.5" strokeWidth={3} />
+                                                                                </div>
+                                                                                <div className="flex-1 min-w-0">
+                                                                                    <div className="flex flex-wrap items-center justify-between gap-y-2 gap-x-4 mb-2">
+                                                                                        <h4 className={cn(
+                                                                                            "font-bold text-lg leading-tight transition-colors",
+                                                                                            item.completed ? "text-primary line-through opacity-70" : "text-zinc-100"
+                                                                                        )}>{item.title}</h4>
+
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1 bg-zinc-950 px-2 py-1 rounded border border-zinc-800">
+                                                                                                <Clock className="h-3 w-3" />
+                                                                                                {item.estimated_time}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    <p className="text-sm text-zinc-400 leading-relaxed mb-4">{item.description}</p>
+
+                                                                                    {/* Resources & Actions */}
+                                                                                    <div className="flex flex-wrap gap-2">
+                                                                                        <button
+                                                                                            onClick={(e) => {
+                                                                                                e.stopPropagation();
+                                                                                                setSelectedTopic(item.title);
+                                                                                                setShowVideoModal(true);
+                                                                                            }}
+                                                                                            className="text-[10px] font-bold uppercase text-white bg-red-600/90 hover:bg-red-600 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+                                                                                        >
+                                                                                            <Play className="h-3 w-3 fill-current" />
+                                                                                            Watch
+                                                                                        </button>
+                                                                                        {item.resources.map((res, i) => (
+                                                                                            <a
+                                                                                                key={i}
+                                                                                                href={`https://www.google.com/search?q=${encodeURIComponent(res)}`}
+                                                                                                target="_blank"
+                                                                                                rel="noopener noreferrer"
+                                                                                                onClick={(e) => e.stopPropagation()}
+                                                                                                className="text-[10px] font-medium text-zinc-400 bg-zinc-950 hover:bg-zinc-800 hover:text-zinc-200 px-3 py-1.5 rounded-lg border border-zinc-800 transition-colors flex items-center gap-1.5"
+                                                                                            >
+                                                                                                <BookOpen className="h-3 w-3" />
+                                                                                                {res}
+                                                                                            </a>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </motion.div>
+                                                                ))}
+                                                            </div>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
 
-                            {/* Main Roadmap Area */}
-                            <div className="lg:col-span-2 space-y-6">
-                                {roadmap.phases.map((phase, index) => (
-                                    <div
-                                        key={phase.id}
-                                        className={cn(
-                                            "bg-zinc-900/40 border border-zinc-800/50 rounded-2xl overflow-hidden transition-all duration-500",
-                                            expandedPhase === phase.id ? "opacity-100 ring-1 ring-zinc-700/50" : "opacity-60 lg:opacity-100"
-                                        )}
-                                    >
-                                        {/* Mobile/Tablet Phase Header */}
-                                        <button
-                                            onClick={() => setExpandedPhase(expandedPhase === phase.id ? null : phase.id)}
-                                            className="w-full flex items-center justify-between p-6 bg-zinc-900/60 hover:bg-zinc-900 transition-colors"
-                                        >
-                                            <div className="flex items-center gap-4">
-                                                <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-zinc-800 text-zinc-100 font-bold font-mono text-lg border border-zinc-700">
-                                                    0{index + 1}
-                                                </div>
-                                                <div>
-                                                    <h3 className="font-bold text-xl text-zinc-100">{phase.title}</h3>
-                                                    <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider mt-1">{phase.items.length} Topics</p>
-                                                </div>
-                                            </div>
-                                            {expandedPhase === phase.id ? <ChevronDown className="h-5 w-5 text-zinc-500" /> : <ChevronRight className="h-5 w-5 text-zinc-500" />}
-                                        </button>
-
-                                        <AnimatePresence>
-                                            {expandedPhase === phase.id && (
-                                                <motion.div
-                                                    initial={{ height: 0, opacity: 0 }}
-                                                    animate={{ height: "auto", opacity: 1 }}
-                                                    exit={{ height: 0, opacity: 0 }}
-                                                    className="overflow-hidden"
-                                                >
-                                                    <div className="p-6 pt-0 space-y-4 border-t border-zinc-800/50 bg-black/20">
-                                                        <div className="h-4" /> {/* Spacer */}
-                                                        {phase.items.map(item => (
-                                                            <motion.div
-                                                                key={item.id}
-                                                                initial={{ x: -10, opacity: 0 }}
-                                                                animate={{ x: 0, opacity: 1 }}
-                                                                className={cn(
-                                                                    "group p-5 rounded-xl border transition-all cursor-pointer relative overflow-hidden",
-                                                                    item.completed
-                                                                        ? "bg-primary/5 border-primary/20"
-                                                                        : "bg-zinc-900/40 border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/40"
-                                                                )}
-                                                                onClick={(e) => handleToggle(phase.id, item.id, item.completed, e)}
-                                                            >
-                                                                <div className="flex items-start gap-5 relative z-10">
-                                                                    <div className={cn(
-                                                                        "mt-1 h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 shrink-0",
-                                                                        item.completed
-                                                                            ? "bg-primary border-primary text-black scale-110"
-                                                                            : "border-zinc-600 text-transparent group-hover:border-primary group-hover:scale-110"
-                                                                    )}>
-                                                                        <CheckCircle className="h-3.5 w-3.5" strokeWidth={3} />
-                                                                    </div>
-
-                                                                    <div className="flex-1 space-y-3">
-                                                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-                                                                            <h4 className={cn(
-                                                                                "font-bold text-lg transition-colors",
-                                                                                item.completed ? "text-primary line-through opacity-70" : "text-zinc-100"
-                                                                            )}>{item.title}</h4>
-
-                                                                            <span className="self-start md:self-auto text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1.5 bg-zinc-900 px-2.5 py-1 rounded-md border border-zinc-800">
-                                                                                <Clock className="h-3 w-3" />
-                                                                                {item.estimated_time}
-                                                                            </span>
-                                                                        </div>
-
-                                                                        <p className="text-zinc-400 leading-relaxed text-sm max-w-2xl">{item.description}</p>
-
-                                                                        <div className="flex flex-wrap gap-2 pt-3 items-center">
-                                                                            <button
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    setSelectedTopic(item.title);
-                                                                                    setShowVideoModal(true);
-                                                                                }}
-                                                                                className="text-[11px] uppercase font-bold text-white bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-2 shadow-sm hover:shadow-red-500/20"
-                                                                            >
-                                                                                <Play className="h-3 w-3 fill-current" />
-                                                                                Watch Video
-                                                                            </button>
-
-                                                                            {item.resources.map((res, i) => (
-                                                                                <a
-                                                                                    key={i}
-                                                                                    href={`https://www.google.com/search?q=${encodeURIComponent(res)}`}
-                                                                                    target="_blank"
-                                                                                    rel="noopener noreferrer"
-                                                                                    onClick={(e) => e.stopPropagation()}
-                                                                                    className="text-[11px] font-medium text-zinc-400 bg-zinc-900/80 hover:bg-zinc-800 hover:text-zinc-200 px-3 py-1.5 rounded-lg border border-zinc-800 transition-colors flex items-center gap-2 group/link"
-                                                                                >
-                                                                                    <BookOpen className="h-3 w-3 text-zinc-500 group-hover/link:text-primary transition-colors" />
-                                                                                    {res}
-                                                                                </a>
-                                                                            ))}
-                                                                        </div>    </div>
-                                                                </div>
-                                                            </motion.div>
-                                                        ))}
-                                                    </div>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
-                                ))}
+                            {/* Conclusion Node */}
+                            <div className="relative pl-20 md:pl-24 pt-12">
+                                <div className="absolute left-[27px] md:left-8 top-12 w-14 h-14 rounded-full bg-zinc-900 border-4 border-dashed border-zinc-700 flex items-center justify-center z-10">
+                                    <Trophy className="h-6 w-6 text-zinc-700" />
+                                </div>
+                                <div className="pt-3 opacity-50">
+                                    <h3 className="text-xl font-bold text-zinc-500">Mastery</h3>
+                                    <p className="text-zinc-600 text-sm">Complete all phases to unlock</p>
+                                </div>
                             </div>
                         </div>
                     ) : null}

@@ -5,6 +5,7 @@ from utils.llm import llm
 from utils.route_utils import handle_error
 from firebase_admin import firestore
 import uuid
+from utils.timeline_logger import log_timeline_event
 
 router = APIRouter(prefix="/assessment", tags=["assessment"])
 db = firestore.client()
@@ -169,6 +170,26 @@ async def submit_assessment(request: SubmitRequest):
             "score": accuracy,
             "type": "assessment"
         })
+
+        # Log to Timeline
+        if weak_topics:
+            await log_timeline_event(
+                uid=request.uid,
+                type="detection",
+                title="Weak Topics Identified",
+                description=f"Assessment revealed {len(weak_topics)} weak areas",
+                icon="AlertTriangle",
+                details=[f"Topics: {', '.join(list(set(weak_topics))[:3])}", f"Score: {int(accuracy)}%"]
+            )
+        else:
+             await log_timeline_event(
+                uid=request.uid,
+                type="insight",
+                title="Assessment Completed",
+                description=f"Strong performance on {request.exam_id}",
+                icon="Trophy",
+                details=[f"Score: {int(accuracy)}%", "No weak areas detected"]
+            )
 
         return {
             "score": correct_count,
