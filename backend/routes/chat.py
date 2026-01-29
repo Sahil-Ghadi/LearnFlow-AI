@@ -96,6 +96,36 @@ async def add_deadline(uid: str, title: str, date: str, subject: str = "General"
         return f"Error adding deadline: {str(e)}"
 
 @tool
+async def add_exam(uid: str, title: str, date: str, subject: str = "General", topics: str = "") -> str:
+    """
+    Add a new exam/midterm/test.
+    date should be YYYY-MM-DD format.
+    topics: Optional comma-separated list of syllabus topics.
+    """
+    try:
+        # distinct logic for exams
+        syllabus_list = []
+        if topics:
+            syllabus_list = [{"name": t.strip(), "completed": False} for t in topics.split(",") if t.strip()]
+            
+        exam_data = {
+            "uid": uid,
+            "title": title,
+            "date": date,
+            "subject": subject,
+            "syllabus": syllabus_list,
+            "total_topics": len(syllabus_list),
+            "completed_topics": 0,
+            "created_at": datetime.utcnow().isoformat()
+        }
+        
+        # Add to 'exams' collection
+        doc_ref = db.collection("user_profiles").document(uid).collection("exams").add(exam_data)
+        return f"Added exam: '{title}' for {subject} on {date} with {len(syllabus_list)} topics."
+    except Exception as e:
+        return f"Error adding exam: {str(e)}"
+
+@tool
 async def get_upcoming_deadlines(uid: str) -> str:
     """Fetch upcoming deadlines."""
     try:
@@ -121,18 +151,20 @@ Your goal is to help the student manage their studies, schedule, and deadlines.
 You have access to tools to:
 1. View their schedule (`get_my_schedule`)
 2. Generate/Modify schedule (`generate_new_schedule`) - Use this to create a fresh schedule OR to apply changes to the existing one (e.g. "change monday to math"). Defaults to Weekly, 1 hr/day.
-3. Add deadlines (`add_deadline`)
-4. View deadlines (`get_upcoming_deadlines`)
+3. Add deadlines (`add_deadline`) - Use this for ASSIGNMENTS, HOMEWORK, PROJECTS, or generic tasks.
+4. Add exams (`add_exam`) - Use this specifically for EXAMS, MIDTERMS, FINALS, TESTS, or QUIZZES.
+5. View deadlines (`get_upcoming_deadlines`)
 
 Rules:
 - If the user asks about their schedule, use `get_my_schedule` first.
-- If the user adds a task/deadline, use `add_deadline`.
+- If the user adds a generic task or assignment, use `add_deadline`.
+- If the user adds an exam, test, or midterm, use `add_exam`. Ask for topics/syllabus if not provided, but you can proceed without them.
 - Be friendly and encouraging.
 - If you perform an action (like adding a deadline), confirm it to the user.
 - If the user asks for something outside your tools, answer to the best of your ability as a helpful AI assistant.
 """
 
-tools = [get_my_schedule, generate_new_schedule, add_deadline, get_upcoming_deadlines]
+tools = [get_my_schedule, generate_new_schedule, add_deadline, add_exam, get_upcoming_deadlines]
 agent_executor = create_react_agent(llm, tools)
 
 @router.post("/message")
@@ -173,9 +205,23 @@ Do not invent new subjects. If the user mentions a topic not in this list, try t
         # Run agent
         result = await agent_executor.ainvoke(inputs)
         
+        # Debugging: Print all messages
+        print("DEBUG: Agent Messages:")
+        for m in result["messages"]:
+            print(f" - {m.type}: {m.content}")
+
         # Extract last message
         last_message = result["messages"][-1]
         response_text = last_message.content
+        
+        # Fallback: If response is empty, check if the previous message was a ToolMessage
+        # This handles cases where the agent stops after the tool execution without a final summary
+        if not response_text or response_text.strip() == "":
+             # Check for tool message in the history
+             for m in reversed(result["messages"]):
+                 if m.type == "tool":
+                     response_text = f"Action Completed: {m.content}"
+                     break
         
         return {"response": response_text}
 
