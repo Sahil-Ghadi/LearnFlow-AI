@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 import {
     MessageCircle,
     X,
@@ -134,19 +134,15 @@ export function ChatBot() {
     const isAcademic = mode === 'academic';
 
     // Animation Variants
-    const containerVariants = {
-        hidden: { opacity: 0, y: 20, scale: 0.95 },
+    const containerVariants: Variants = {
+        hidden: { opacity: 0 },
         visible: {
             opacity: 1,
-            y: 0,
-            scale: 1,
-            transition: { type: 'spring', stiffness: 350, damping: 25 }
+            transition: { duration: 0.3, ease: "easeOut" }
         },
         exit: {
             opacity: 0,
-            y: 20,
-            scale: 0.95,
-            transition: { duration: 0.2 }
+            transition: { duration: 0.2, ease: "easeIn" }
         }
     };
 
