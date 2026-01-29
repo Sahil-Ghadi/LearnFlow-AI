@@ -27,7 +27,7 @@ interface GapAnalysis {
 }
 
 export function JobMarketGap() {
-    const { user } = useMode();
+    const { user, userProfile, setUserProfile } = useMode();
     const [jobs, setJobs] = useState<JobRole[]>([]);
     const [selectedJob, setSelectedJob] = useState<JobRole | null>(null);
     const [gapAnalysis, setGapAnalysis] = useState<GapAnalysis | null>(null);
@@ -117,7 +117,18 @@ export function JobMarketGap() {
 
             if (res.ok) {
                 toast.success(`Added "${skillName}" to your goals`);
-                // Consider adding a manual refresh callback here if needed
+
+                // Manually update context to show in Settings immediately
+                if (userProfile && setUserProfile) {
+                    const updatedInterests = [...(userProfile.sideHustleInterests || [])];
+                    if (!updatedInterests.includes(skillName)) {
+                        updatedInterests.push(skillName);
+                        setUserProfile({
+                            ...userProfile,
+                            sideHustleInterests: updatedInterests
+                        });
+                    }
+                }
             } else {
                 const err = await res.json();
                 if (err.message === "Skill already exists") {

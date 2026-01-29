@@ -43,7 +43,7 @@ export function Sidebar() {
           <Bot className="h-5 w-5 text-primary-foreground" />
         </div>
         <div>
-          <h1 className="font-heading font-bold text-foreground">LearnAI</h1>
+          <h1 className="font-heading font-bold text-foreground">LearnFLow AI</h1>
           <p className="text-xs text-muted-foreground">Orchestrator</p>
         </div>
       </div>

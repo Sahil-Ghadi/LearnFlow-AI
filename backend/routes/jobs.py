@@ -6,6 +6,7 @@ from datetime import datetime
 from utils.llm import llm
 from firebase_admin import firestore
 import json
+from utils.timeline_logger import log_timeline_event
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -125,6 +126,17 @@ async def analyze_jobs(request: JobAnalysisRequest):
                 "updated_at": datetime.utcnow().isoformat()
             })
             
+            # Log to Timeline
+            await log_timeline_event(
+                uid=request.uid,
+                type="insight",
+                title="Job Market Analysis",
+                description="Analyzed profile for side hustle opportunities",
+                icon="Briefcase",
+                details=[f"Suggested {len(jobs_data)} roles"],
+                mode="side-hustle"
+            )
+
             return [JobRole(**job) for job in jobs_data]
             
         except Exception as e:
@@ -177,6 +189,18 @@ async def analyze_gap(request: GapAnalysisRequest):
                 response = response.split("```")[1].split("```")[0]
                 
             gap_data = json.loads(response.strip())
+            
+            # Log to Timeline
+            await log_timeline_event(
+                uid=request.uid,
+                type="detection",
+                title="Skill Gap Detected",
+                description=f"Analysis for {request.role}",
+                icon="AlertTriangle",
+                details=[f"Missing: {len(gap_data.get('missing_skills', []))} skills"],
+                mode="side-hustle"
+            )
+
             return GapAnalysisResponse(**gap_data)
         except Exception as e:
             print(f"LLM Error: {e}")
@@ -210,6 +234,25 @@ async def add_skill(request: AddSkillRequest):
         
         skills_ref.add(new_skill)
         
+        # Log to Timeline
+        await log_timeline_event(
+            uid=request.uid,
+            type="roadmap",
+            title="Skill Added to Roadmap",
+            description=f"Started learning: {request.skill_name}",
+            icon="Book",
+            details=["Added to skill tracker"],
+            mode="side-hustle"
+        )
+        
+        # Sync with Profile Interests
+        try:
+            user_ref.update({
+                "side_hustle_interests": firestore.ArrayUnion([request.skill_name])
+            })
+        except Exception as e:
+            print(f"Failed to sync interest: {e}")
+
         return {"message": "Skill added successfully"}
 
     except Exception as e:

@@ -4,12 +4,13 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
-  Clock,
-  Sliders,
   Save,
-  User,
   GraduationCap,
-  LogOut
+  LogOut,
+  Plus,
+  X,
+  Book,
+  Rocket
 } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { DashboardLayout } from '@/components/DashboardLayout';
@@ -17,23 +18,18 @@ import { GlowCard } from '@/components/ui/GlowCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
-import { Switch } from '@/components/ui/switch';
 import { useMode } from '@/contexts/ModeContext';
 import { toast } from 'sonner';
 
 export default function ProfilePage() {
-  const { userProfile, setUserProfile, isOnboarded, isLoading, isAuthenticated } = useMode();
+  const { userProfile, setUserProfile, isOnboarded, isLoading, isAuthenticated, user } = useMode();
   const router = useRouter();
-  const [settings, setSettings] = useState({
-    dailyStudyHours: 4,
-    difficultyLevel: 'medium',
-    language: 'english',
-    agentAutonomy: true,
-    autoScheduling: true,
-    breakReminders: true,
-  });
+
+  const [localSubjects, setLocalSubjects] = useState<string[]>([]);
+  const [localInterests, setLocalInterests] = useState<string[]>([]);
+  const [newSubject, setNewSubject] = useState('');
+  const [newInterest, setNewInterest] = useState('');
+  const [formProfile, setFormProfile] = useState<any>({});
 
   useEffect(() => {
     if (!isLoading && isAuthenticated && !isOnboarded) {
@@ -41,15 +37,89 @@ export default function ProfilePage() {
     }
   }, [isOnboarded, isLoading, router, isAuthenticated]);
 
-  const handleSave = () => {
-    toast.success('Profile updated successfully!');
+  useEffect(() => {
+    if (userProfile) {
+      setLocalSubjects(userProfile.academicSubjects || []);
+      setLocalInterests(userProfile.sideHustleInterests || []);
+      setFormProfile({
+        name: userProfile.name || '',
+        college: userProfile.college || '',
+        course: userProfile.course || '',
+      });
+    }
+  }, [userProfile]);
+
+  const handleAddSubject = () => {
+    if (newSubject.trim() && !localSubjects.includes(newSubject.trim())) {
+      setLocalSubjects([...localSubjects, newSubject.trim()]);
+      setNewSubject('');
+    }
+  };
+
+  const handleRemoveSubject = (subject: string) => {
+    setLocalSubjects(localSubjects.filter(s => s !== subject));
+  };
+
+  const handleAddInterest = () => {
+    if (newInterest.trim() && !localInterests.includes(newInterest.trim())) {
+      setLocalInterests([...localInterests, newInterest.trim()]);
+      setNewInterest('');
+    }
+  };
+
+  const handleRemoveInterest = (interest: string) => {
+    setLocalInterests(localInterests.filter(i => i !== interest));
+  };
+
+  const handleSave = async () => {
+    if (!user) return;
+
+    try {
+      const updatedProfile = {
+        ...userProfile,
+        ...formProfile,
+        uid: user.uid,
+        academic_subjects: localSubjects,
+        side_hustle_interests: localInterests,
+      };
+
+      const response = await fetch(`http://localhost:8000/profile/${user.uid}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedProfile),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update profile');
+      }
+
+      const data = await response.json();
+      setUserProfile({
+        ...userProfile,
+        ...data,
+        academicSubjects: data.academic_subjects,
+        sideHustleInterests: data.side_hustle_interests
+      } as any);
+
+      toast.success('Profile updated successfully!');
+    } catch (error) {
+      console.error("Save error:", error);
+      toast.error('Failed to save profile changes');
+    }
   };
 
   const handleLogout = async () => {
     try {
       await auth.signOut();
-      localStorage.removeItem(`userProfile_${userProfile?.name}`); // Optional cleanup
-      router.push('/'); // Redirect to login
+      if (userProfile?.name) {
+        localStorage.removeItem(`userProfile_${userProfile.name}`);
+      }
+      if (user) {
+        localStorage.removeItem(`userProfile_${user.uid}`);
+      }
+      router.push('/');
       toast.success('Signed out successfully');
     } catch (error) {
       console.error("Logout error:", error);
@@ -68,7 +138,7 @@ export default function ProfilePage() {
   return (
     <DashboardLayout
       title="My Profile"
-      subtitle="Manage your personal information and learning preferences"
+      subtitle="Manage your personal information and learning focus"
     >
       <div className="mx-auto max-w-5xl space-y-6">
 
@@ -98,27 +168,30 @@ export default function ProfilePage() {
             <div className="grid gap-6 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
-                <Input id="name" defaultValue={userProfile?.name || ''} className="bg-muted/50" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <Input id="email" type="email" placeholder="your@email.com" className="bg-muted/50" />
+                <Input
+                  id="name"
+                  value={formProfile.name || ''}
+                  onChange={(e) => setFormProfile({ ...formProfile, name: e.target.value })}
+                  className="bg-muted/50"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="college">College / University</Label>
-                <Input id="college" defaultValue={userProfile?.college || ''} className="bg-muted/50" />
+                <Input
+                  id="college"
+                  value={formProfile.college || ''}
+                  onChange={(e) => setFormProfile({ ...formProfile, college: e.target.value })}
+                  className="bg-muted/50"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="course">Major / Course</Label>
-                <Input id="course" defaultValue={userProfile?.course || ''} className="bg-muted/50" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input id="phone" type="tel" placeholder="+91 XXXXX XXXXX" className="bg-muted/50" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="website">Personal Website</Label>
-                <Input id="website" type="url" placeholder="https://yourwebsite.com" className="bg-muted/50" />
+                <Input
+                  id="course"
+                  value={formProfile.course || ''}
+                  onChange={(e) => setFormProfile({ ...formProfile, course: e.target.value })}
+                  className="bg-muted/50"
+                />
               </div>
             </div>
           </div>
@@ -127,118 +200,84 @@ export default function ProfilePage() {
         {/* Settings Grid */}
         <div className="grid gap-6 md:grid-cols-2">
 
-          {/* Learning Preferences */}
+          {/* Academic Focus */}
           <GlowCard delay={0.1} className="h-full">
             <div className="mb-6 flex items-center gap-3">
               <div className="icon-container">
-                <Sliders className="h-5 w-5 text-primary" />
+                <Book className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h2 className="font-heading text-lg font-bold">Learning Preferences</h2>
-                <p className="text-xs text-muted-foreground">Configure your study parameters</p>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              {/* Daily Study Hours */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label>Daily Study Hours</Label>
-                  <span className="font-medium text-primary">{settings.dailyStudyHours} hours</span>
-                </div>
-                <Slider
-                  value={[settings.dailyStudyHours]}
-                  onValueChange={([value]) => setSettings({ ...settings, dailyStudyHours: value })}
-                  min={1}
-                  max={10}
-                  step={0.5}
-                  className="w-full"
-                />
-              </div>
-
-              {/* Difficulty Level */}
-              <div className="space-y-2">
-                <Label>Difficulty Level</Label>
-                <Select
-                  value={settings.difficultyLevel}
-                  onValueChange={(value) => setSettings({ ...settings, difficultyLevel: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="easy">Easy</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="hard">Hard</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Language */}
-              <div className="space-y-2">
-                <Label>Preferred Language</Label>
-                <Select
-                  value={settings.language}
-                  onValueChange={(value) => setSettings({ ...settings, language: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="english">English</SelectItem>
-                    <SelectItem value="spanish">Spanish</SelectItem>
-                    <SelectItem value="hindi">Hindi</SelectItem>
-                    <SelectItem value="french">French</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </GlowCard>
-
-          {/* AI Agent Settings */}
-          <GlowCard delay={0.2} className="h-full">
-            <div className="mb-6 flex items-center gap-3">
-              <div className="icon-container">
-                <Clock className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h2 className="font-heading text-lg font-bold">AI Agent Behavior</h2>
-                <p className="text-xs text-muted-foreground">Configure orchestrator autonomy</p>
+                <h2 className="font-heading text-lg font-bold">Academic Subjects</h2>
+                <p className="text-xs text-muted-foreground">Manage your current semester subjects</p>
               </div>
             </div>
 
             <div className="space-y-4">
-              <div className="flex items-center justify-between rounded-lg border border-border p-3 bg-muted/20">
-                <div>
-                  <p className="font-medium text-sm">Full Autonomy</p>
-                  <p className="text-xs text-muted-foreground">Allow AI to make scheduling decisions</p>
-                </div>
-                <Switch
-                  checked={settings.agentAutonomy}
-                  onCheckedChange={(checked) => setSettings({ ...settings, agentAutonomy: checked })}
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add a subject (e.g. Data Structures)"
+                  value={newSubject}
+                  onChange={(e) => setNewSubject(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddSubject()}
                 />
+                <Button onClick={handleAddSubject} size="icon" variant="secondary">
+                  <Plus className="h-4 w-4" />
+                </Button>
               </div>
 
-              <div className="flex items-center justify-between rounded-lg border border-border p-3 bg-muted/20">
-                <div>
-                  <p className="font-medium text-sm">Auto-Scheduling</p>
-                  <p className="text-xs text-muted-foreground">Create daily plans automatically</p>
-                </div>
-                <Switch
-                  checked={settings.autoScheduling}
-                  onCheckedChange={(checked) => setSettings({ ...settings, autoScheduling: checked })}
+              <div className="flex flex-wrap gap-2 min-h-[100px] content-start">
+                {localSubjects.map((subject) => (
+                  <div key={subject} className="flex items-center gap-1 bg-primary/10 text-primary border border-primary/20 px-3 py-1.5 rounded-full text-sm">
+                    {subject}
+                    <button onClick={() => handleRemoveSubject(subject)} className="hover:text-destructive transition-colors ml-1">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+                {localSubjects.length === 0 && (
+                  <p className="text-sm text-muted-foreground italic">No subjects added yet.</p>
+                )}
+              </div>
+            </div>
+          </GlowCard>
+
+          {/* Side Hustle Interests */}
+          <GlowCard delay={0.2} className="h-full">
+            <div className="mb-6 flex items-center gap-3">
+              <div className="icon-container">
+                <Rocket className="h-5 w-5 text-[#a855f7]" />
+              </div>
+              <div>
+                <h2 className="font-heading text-lg font-bold">Side Hustle Interests</h2>
+                <p className="text-xs text-muted-foreground">Skills you want to monetize</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add an interest (e.g. Web Development)"
+                  value={newInterest}
+                  onChange={(e) => setNewInterest(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddInterest()}
                 />
+                <Button onClick={handleAddInterest} size="icon" variant="secondary">
+                  <Plus className="h-4 w-4" />
+                </Button>
               </div>
 
-              <div className="flex items-center justify-between rounded-lg border border-border p-3 bg-muted/20">
-                <div>
-                  <p className="font-medium text-sm">Break Reminders</p>
-                  <p className="text-xs text-muted-foreground">Smart notifications for breaks</p>
-                </div>
-                <Switch
-                  checked={settings.breakReminders}
-                  onCheckedChange={(checked) => setSettings({ ...settings, breakReminders: checked })}
-                />
+              <div className="flex flex-wrap gap-2 min-h-[100px] content-start">
+                {localInterests.map((interest) => (
+                  <div key={interest} className="flex items-center gap-1 bg-[#a855f7]/10 text-[#a855f7] border border-[#a855f7]/20 px-3 py-1.5 rounded-full text-sm">
+                    {interest}
+                    <button onClick={() => handleRemoveInterest(interest)} className="hover:text-destructive transition-colors ml-1">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+                {localInterests.length === 0 && (
+                  <p className="text-sm text-muted-foreground italic">No interests added yet.</p>
+                )}
               </div>
             </div>
           </GlowCard>

@@ -59,6 +59,23 @@ export function ModeProvider({ children }: { children: ReactNode }) {
             console.error('Error parsing user profile:', e);
           }
         }
+
+        // Fetch fresh data from backend
+        fetch(`http://localhost:8000/profile/${firebaseUser.uid}`)
+          .then(res => res.json())
+          .then(data => {
+            // Map backend snake_case to frontend camelCase
+            const freshProfile: UserProfile = {
+              name: data.name,
+              college: data.college,
+              course: data.course,
+              academicSubjects: data.academic_subjects || [],
+              sideHustleInterests: data.side_hustle_interests || [],
+              onboarded: data.onboarded
+            };
+            setUserProfile(freshProfile);
+          })
+          .catch(err => console.error("Failed to fetch fresh profile:", err));
       } else {
         setUserProfile(null);
       }

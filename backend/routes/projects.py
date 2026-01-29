@@ -8,6 +8,7 @@ from datetime import datetime
 import uuid
 import base64
 from langchain_core.messages import HumanMessage
+from utils.timeline_logger import log_timeline_event
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -92,6 +93,17 @@ async def generate_project_internal(uid: str, skill_name: str = None, difficulty
         new_project['in_portfolio'] = False
         
         user_ref.collection("projects").document(new_project['id']).set(new_project)
+        
+        # Log to Timeline
+        await log_timeline_event(
+            uid=uid,
+            type="project",
+            title="New Project Assigned",
+            description=f"Generated: {new_project['title']}",
+            icon="Rocket",
+            details=[f"Difficulty: {difficulty}", f"XP Reward: {new_project['xp_reward']}"],
+            mode="side-hustle"
+        )
         
         return new_project
 
@@ -208,6 +220,17 @@ async def submit_project(submission: ProjectSubmission):
 
             except Exception as e:
                 print(f"Failed to log project activity/stats: {e}")
+
+            # Log to Timeline
+            await log_timeline_event(
+                uid=submission.uid,
+                type="project",
+                title="Project Completed",
+                description=f"Submitted: {project_data.get('title')}",
+                icon="Check",
+                details=[f"Grade: {result.get('grade')}/100", f"XP Earned: {project_data.get('xp_reward', 100)}"],
+                mode="side-hustle"
+            )
 
             return {
                 "passed": True,
